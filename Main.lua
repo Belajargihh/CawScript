@@ -22,6 +22,37 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 -- ═══════════════════════════════════════
+-- REMOTE HOOK: DETECT ITEM ID
+-- ═══════════════════════════════════════
+
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
+
+local detectMode = false
+local hookSuccess = false
+
+pcall(function()
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        
+        if method == "FireServer" and self == RemotePlace and detectMode and not AutoPnB.isRunning() then
+            local args = {...}
+            if args[2] and type(args[2]) == "number" then
+                AutoPnB.ITEM_ID = args[2]
+                detectMode = false
+            end
+        end
+        
+        return oldNamecall(self, ...)
+    end)
+    setreadonly(mt, true)
+    hookSuccess = true
+end)
+
+-- ═══════════════════════════════════════
 -- WARNA & STYLE
 -- ═══════════════════════════════════════
 
@@ -211,7 +242,7 @@ itemLabel.TextXAlignment = Enum.TextXAlignment.Left
 itemLabel.Parent = itemFrame
 
 local itemInput = Instance.new("TextBox")
-itemInput.Size = UDim2.new(0, 60, 0, 24)
+itemInput.Size = UDim2.new(0, 50, 0, 24)
 itemInput.Position = UDim2.new(0, 85, 0, 2)
 itemInput.BackgroundColor3 = COLORS.cellOff
 itemInput.Text = "2"
@@ -230,6 +261,39 @@ itemInput.FocusLost:Connect(function()
         itemInput.Text = tostring(AutoPnB.ITEM_ID)
     else
         itemInput.Text = tostring(AutoPnB.ITEM_ID)
+    end
+end)
+
+-- Select Item button
+local selectBtn = Instance.new("TextButton")
+selectBtn.Size = UDim2.new(0, 100, 0, 24)
+selectBtn.Position = UDim2.new(0, 145, 0, 2)
+selectBtn.BackgroundColor3 = COLORS.accent
+selectBtn.Text = "🔍 Select"
+selectBtn.TextColor3 = COLORS.textWhite
+selectBtn.TextSize = 12
+selectBtn.Font = Enum.Font.GothamBold
+selectBtn.BorderSizePixel = 0
+selectBtn.Parent = itemFrame
+Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
+
+if not hookSuccess then
+    selectBtn.BackgroundColor3 = COLORS.cellOff
+    selectBtn.Text = "⚠️ No Hook"
+end
+
+selectBtn.MouseButton1Click:Connect(function()
+    if not hookSuccess then return end
+    if detectMode then
+        -- Cancel detect
+        detectMode = false
+        selectBtn.BackgroundColor3 = COLORS.accent
+        selectBtn.Text = "🔍 Select"
+    else
+        -- Enter detect mode
+        detectMode = true
+        selectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
+        selectBtn.Text = "⏳ Place 1 blok..."
     end
 end)
 
@@ -455,6 +519,13 @@ spawn(function()
         local gx, gy = Coordinates.getGridPosition()
         if gx then
             posLabel.Text = "📍 Posisi: X=" .. gx .. "  Y=" .. gy
+        end
+        
+        -- Update item input dari detection
+        itemInput.Text = tostring(AutoPnB.ITEM_ID)
+        if hookSuccess and not detectMode then
+            selectBtn.BackgroundColor3 = COLORS.accent
+            selectBtn.Text = "🔍 Select"
         end
         
         -- Update status
