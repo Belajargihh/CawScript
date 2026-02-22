@@ -16,7 +16,7 @@
 -- ═══════════════════════════════════════
 
 -- ⚠️ GANTI URL INI SETELAH PUSH KE GITHUB
-local GITHUB_BASE = "https://raw.githubusercontent.com/USERNAME/REPO/main/"
+local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 
 local Coordinates = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua"))()
 local AutoPnB    = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"))()

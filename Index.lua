@@ -15,8 +15,8 @@
 ]]
 
 -- ⚠️ GANTI INI DENGAN URL GITHUB KAMU
-local GITHUB_USER = "USERNAME"   -- Ganti dengan username GitHub kamu
-local GITHUB_REPO = "REPO"      -- Ganti dengan nama repository kamu
+local GITHUB_USER = "Belajargihh"   -- Username GitHub kamu
+local GITHUB_REPO = "CawScript"     -- Nama repository kamu
 local BRANCH      = "main"      -- Branch (biasanya "main")
 
 -- Bangun URL
