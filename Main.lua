@@ -3,7 +3,7 @@
     UI Utama — Rayfield Interface (Craft a World)
     
     Tab:
-    1. Auto PnB — Toggle, auto-sync position, item dropdown
+    1. Auto PnB — Toggle, auto-sync, auto-detect item
     2. Settings — Delay config, antiban
     3. Info — Panduan penggunaan
     
@@ -20,23 +20,54 @@ local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua"))()
 
--- Load Item Catalog dari JSON
+-- Load Item Catalog dari JSON (untuk nama item)
 local HttpService = game:GetService("HttpService")
 local itemsRaw = game:HttpGet(GITHUB_BASE .. "Assets/items.json")
 local itemsData = HttpService:JSONDecode(itemsRaw)
 
--- Build dropdown list & lookup
-local itemDropdownList = {}
-local itemNameToId = {}
-
+-- Build ID-to-Name lookup
+local itemIdToName = {}
 for _, item in ipairs(itemsData.items) do
-    local label = item.name .. " [" .. item.id .. "]"
-    table.insert(itemDropdownList, label)
-    itemNameToId[label] = item.id
+    itemIdToName[item.id] = item.name
 end
 
 -- Inisialisasi dependencies
 AutoPnB.init(Antiban)
+
+-- ═══════════════════════════════════════
+-- AUTO-DETECT ITEM VIA REMOTE HOOK
+-- ═══════════════════════════════════════
+
+local detectedItemId = 2  -- Default Dirt Block
+local detectedItemName = "Dirt Block"
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
+local RemoteFist  = Remotes:WaitForChild("PlayerFist")
+
+-- Hook __namecall untuk tangkap item ID saat player place manual
+local hookSuccess = false
+pcall(function()
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        
+        -- Tangkap item ID dari PlayerPlaceItem (hanya saat bukan auto mode)
+        if method == "FireServer" and self == RemotePlace and not AutoPnB.isRunning() then
+            local args = {...}
+            if args[2] and type(args[2]) == "number" then
+                detectedItemId = args[2]
+                AutoPnB.ITEM_ID = args[2]
+                detectedItemName = itemIdToName[args[2]] or ("Unknown #" .. args[2])
+            end
+        end
+        
+        return oldNamecall(self, ...)
+    end)
+    setreadonly(mt, true)
+    hookSuccess = true
+end)
 
 -- ═══════════════════════════════════════
 -- RAYFIELD UI
@@ -58,31 +89,29 @@ local Window = Rayfield:CreateWindow({
 
 local TabPnB = Window:CreateTab("⚒️ Auto PnB", 4483362458)
 
--- Posisi saat ini (auto-detect)
+-- Status labels
 local PosLabel    = TabPnB:CreateLabel("📍 Posisi: belum sync")
 local TargetLabel = TabPnB:CreateLabel("🎯 Target: X=0  Y=0")
+local ItemLabel   = TabPnB:CreateLabel("🧱 Item: Dirt Block [2]")
 local StatusLabel = TabPnB:CreateLabel("Status: Idle")
 local CycleLabel  = TabPnB:CreateLabel("Siklus: 0")
 
--- Auto-sync toggle
+if not hookSuccess then
+    TabPnB:CreateLabel("⚠️ Hook gagal - pakai slider ID manual")
+end
+
+-- Auto-sync posisi
 local autoSyncEnabled = false
 
 TabPnB:CreateToggle({
-    Name = "📍 Auto-Sync Posisi (Real-Time)",
+    Name = "📍 Auto-Sync Posisi",
     CurrentValue = false,
     Callback = function(value)
         autoSyncEnabled = value
-        if value then
-            Rayfield:Notify({
-                Title = "Auto-Sync",
-                Content = "Posisi akan terupdate otomatis!",
-                Duration = 2
-            })
-        end
     end,
 })
 
--- Tombol sync manual
+-- Sync manual
 TabPnB:CreateButton({
     Name = "🔄 Sync Posisi Sekarang",
     Callback = function()
@@ -93,20 +122,14 @@ TabPnB:CreateButton({
             TargetLabel:Set("🎯 Target: " .. Coordinates.formatDisplay(gx, gy))
             Rayfield:Notify({
                 Title = "Synced!",
-                Content = "Target set ke " .. Coordinates.formatDisplay(gx, gy),
-                Duration = 2
-            })
-        else
-            Rayfield:Notify({
-                Title = "Error",
-                Content = "Karakter tidak ditemukan!",
+                Content = "Target: " .. Coordinates.formatDisplay(gx, gy),
                 Duration = 2
             })
         end
     end,
 })
 
--- Input Target manual (slider)
+-- Manual target sliders
 TabPnB:CreateSlider({
     Name = "Target Grid X (Manual)",
     Range = {0, 200},
@@ -129,22 +152,17 @@ TabPnB:CreateSlider({
     end,
 })
 
--- Pilih Item (Dropdown)
-TabPnB:CreateDropdown({
-    Name = "Pilih Item",
-    Options = itemDropdownList,
-    CurrentOption = {"Dirt Block [2]"},
-    Callback = function(option)
-        local selected = option[1] or option
-        local id = itemNameToId[selected]
-        if id then
-            AutoPnB.ITEM_ID = id
-            Rayfield:Notify({
-                Title = "Item Dipilih",
-                Content = selected,
-                Duration = 2
-            })
-        end
+-- Manual item ID (fallback kalau hook gagal)
+TabPnB:CreateSlider({
+    Name = "Item ID (Manual / Fallback)",
+    Range = {1, 500},
+    Increment = 1,
+    CurrentValue = 2,
+    Callback = function(value)
+        AutoPnB.ITEM_ID = value
+        detectedItemId = value
+        detectedItemName = itemIdToName[value] or ("Unknown #" .. value)
+        ItemLabel:Set("🧱 Item: " .. detectedItemName .. " [" .. value .. "]")
     end,
 })
 
@@ -154,7 +172,7 @@ TabPnB:CreateToggle({
     CurrentValue = false,
     Callback = function(value)
         if value then
-            -- Auto-sync posisi sebelum mulai kalau belum di-set
+            -- Auto-sync posisi kalau belum di-set
             if AutoPnB.TARGET_X == 0 and AutoPnB.TARGET_Y == 0 then
                 local gx, gy = Coordinates.getGridPosition()
                 if gx then
@@ -167,7 +185,7 @@ TabPnB:CreateToggle({
             AutoPnB.start()
             Rayfield:Notify({
                 Title = "Auto PnB",
-                Content = "Dimulai! Target: X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y,
+                Content = detectedItemName .. " [" .. detectedItemId .. "] di X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y,
                 Duration = 3
             })
         else
@@ -184,18 +202,20 @@ TabPnB:CreateToggle({
 -- Real-time update loop
 spawn(function()
     while true do
-        -- Update posisi karakter
+        -- Update posisi
         local gx, gy = Coordinates.getGridPosition()
         if gx then
             PosLabel:Set("📍 Posisi: " .. Coordinates.formatDisplay(gx, gy))
             
-            -- Auto-sync target kalau enabled
             if autoSyncEnabled and not AutoPnB.isRunning() then
                 AutoPnB.TARGET_X = gx
                 AutoPnB.TARGET_Y = gy
                 TargetLabel:Set("🎯 Target: " .. Coordinates.formatDisplay(gx, gy))
             end
         end
+        
+        -- Update detected item
+        ItemLabel:Set("🧱 Item: " .. detectedItemName .. " [" .. detectedItemId .. "]")
         
         -- Update status
         StatusLabel:Set("Status: " .. AutoPnB.getStatus())
@@ -275,7 +295,6 @@ TabSettings:CreateButton({
     end,
 })
 
--- Update antiban status
 spawn(function()
     while true do
         local status = Antiban.isPaused() and "PAUSED ⚠️" or "Aktif ✅"
@@ -293,9 +312,9 @@ local TabInfo = Window:CreateTab("ℹ️ Info", 4483362458)
 TabInfo:CreateLabel("CawScript — Auto PnB for Craft a World")
 TabInfo:CreateParagraph({
     Title = "Cara Pakai",
-    Content = "1. Nyalakan Auto-Sync → posisi otomatis ke-detect\n2. Atau klik Sync Posisi → ambil posisi sekarang\n3. Atau atur manual pakai slider X dan Y\n4. Pilih item dari dropdown\n5. Aktifkan Auto PnB\n\nRumus: Grid = round(WorldPos / 4.5)"
+    Content = "1. Place 1 blok manual → item otomatis ke-detect\n2. Nyalakan Auto-Sync → posisi otomatis update\n3. Aktifkan Auto PnB → Place + Punch loop\n\n🧱 Item auto-detect dari aksi manual kamu\n📍 Posisi auto-detect dari karakter"
 })
 TabInfo:CreateParagraph({
     Title = "Tips Anti-Ban",
-    Content = "• Jangan set delay terlalu rendah\n• Aktifkan Human Jitter\n• Max 8 aksi/detik (default)\n• Jangan AFK terlalu lama saat auto-farm"
+    Content = "• Jangan set delay terlalu rendah\n• Aktifkan Human Jitter\n• Max 8 aksi/detik (default)"
 })
