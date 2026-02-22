@@ -24,15 +24,15 @@ local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates
 AutoPnB.init(Antiban)
 
 -- ═══════════════════════════════════════
--- AUTO-DETECT POSISI TARGET VIA PUNCH
+-- AUTO-DETECT VIA PLACE (POSISI + ITEM)
 -- ═══════════════════════════════════════
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemoteFist  = Remotes:WaitForChild("PlayerFist")
+local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
 
--- Hook __namecall: saat player punch manual, tangkap posisi grid-nya
+-- Hook __namecall: saat player place manual, tangkap posisi + item ID
 local hookSuccess = false
-local punchDetected = false
+local placeDetected = false
 pcall(function()
     local mt = getrawmetatable(game)
     local oldNamecall = mt.__namecall
@@ -40,14 +40,17 @@ pcall(function()
     mt.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
         
-        -- Tangkap posisi dari PlayerFist (hanya saat bukan auto mode)
-        if method == "FireServer" and self == RemoteFist and not AutoPnB.isRunning() then
+        -- Tangkap posisi + item dari PlayerPlaceItem (hanya saat bukan auto mode)
+        if method == "FireServer" and self == RemotePlace and not AutoPnB.isRunning() then
             local args = {...}
             if args[1] and typeof(args[1]) == "Vector2" then
                 AutoPnB.TARGET_X = args[1].X
                 AutoPnB.TARGET_Y = args[1].Y
-                punchDetected = true
             end
+            if args[2] and type(args[2]) == "number" then
+                AutoPnB.ITEM_ID = args[2]
+            end
+            placeDetected = true
         end
         
         return oldNamecall(self, ...)
@@ -79,11 +82,12 @@ local TabPnB = Window:CreateTab("⚒️ Auto PnB", 4483362458)
 -- Status labels
 local PosLabel    = TabPnB:CreateLabel("📍 Posisi: belum sync")
 local TargetLabel = TabPnB:CreateLabel("🎯 Target: X=0  Y=0")
+local ItemLabel   = TabPnB:CreateLabel("🧱 Item ID: 2")
 local StatusLabel = TabPnB:CreateLabel("Status: Idle")
 local CycleLabel  = TabPnB:CreateLabel("Siklus: 0")
 
 if hookSuccess then
-    TabPnB:CreateLabel("✅ Punch Detection aktif — punch blok untuk set target")
+    TabPnB:CreateLabel("✅ Place 1 blok → posisi + item otomatis ke-detect!")
 else
     TabPnB:CreateLabel("⚠️ Hook gagal - pakai slider manual")
 end
@@ -199,10 +203,11 @@ spawn(function()
             end
         end
         
-        -- Update target dari punch detection
-        if punchDetected then
-            TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y .. " (punch)")
-            punchDetected = false
+        -- Update dari place detection (posisi + item)
+        if placeDetected then
+            TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
+            ItemLabel:Set("🧱 Item ID: " .. AutoPnB.ITEM_ID)
+            placeDetected = false
         end
         
         -- Update status
