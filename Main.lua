@@ -279,28 +279,17 @@ itemLabel.Font = Enum.Font.Gotham
 itemLabel.TextXAlignment = Enum.TextXAlignment.Left
 itemLabel.Parent = itemFrame
 
-local itemInput = Instance.new("TextBox")
-itemInput.Size = UDim2.new(0, 60, 0, 24)
-itemInput.Position = UDim2.new(0, 85, 0, 0)
-itemInput.BackgroundColor3 = COLORS.cellOff
-itemInput.Text = "2"
-itemInput.TextColor3 = COLORS.textWhite
-itemInput.TextSize = 14
-itemInput.Font = Enum.Font.GothamBold
-itemInput.BorderSizePixel = 0
-itemInput.ClearTextOnFocus = false
-itemInput.Parent = itemFrame
-Instance.new("UICorner", itemInput).CornerRadius = UDim.new(0, 6)
-
-itemInput.FocusLost:Connect(function()
-    local num = tonumber(itemInput.Text)
-    if num and num >= 1 then
-        AutoPnB.ITEM_ID = math.floor(num)
-        itemInput.Text = tostring(AutoPnB.ITEM_ID)
-    else
-        itemInput.Text = tostring(AutoPnB.ITEM_ID)
-    end
-end)
+local itemDisplay = Instance.new("TextLabel")
+itemDisplay.Size = UDim2.new(0, 60, 0, 24)
+itemDisplay.Position = UDim2.new(0, 85, 0, 0)
+itemDisplay.BackgroundColor3 = COLORS.cellOff
+itemDisplay.Text = "2"
+itemDisplay.TextColor3 = COLORS.textWhite
+itemDisplay.TextSize = 14
+itemDisplay.Font = Enum.Font.GothamBold
+itemDisplay.BorderSizePixel = 0
+itemDisplay.Parent = itemFrame
+Instance.new("UICorner", itemDisplay).CornerRadius = UDim.new(0, 6)
 
 -- Select Item button (baris sendiri, full width)
 local selectBtn = Instance.new("TextButton")
@@ -558,11 +547,11 @@ spawn(function()
             posLabel.Text = "📍 Posisi: X=" .. gx .. "  Y=" .. gy
         end
         
-        -- Update item input dari detection
-        itemInput.Text = tostring(AutoPnB.ITEM_ID)
+        -- Update item display dari detection
+        itemDisplay.Text = tostring(AutoPnB.ITEM_ID)
         if hookSuccess and not detectMode then
             selectBtn.BackgroundColor3 = COLORS.accent
-            selectBtn.Text = "🔍 Select"
+            selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
         end
         
         -- Update status
