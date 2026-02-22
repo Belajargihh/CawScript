@@ -20,32 +20,19 @@ local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua"))()
 
--- Load Item Catalog dari JSON (untuk nama item)
-local HttpService = game:GetService("HttpService")
-local itemsRaw = game:HttpGet(GITHUB_BASE .. "Assets/items.json")
-local itemsData = HttpService:JSONDecode(itemsRaw)
-
--- Build ID-to-Name lookup
-local itemIdToName = {}
-for _, item in ipairs(itemsData.items) do
-    itemIdToName[item.id] = item.name
-end
-
 -- Inisialisasi dependencies
 AutoPnB.init(Antiban)
 
 -- ═══════════════════════════════════════
--- AUTO-DETECT ITEM VIA REMOTE HOOK
+-- AUTO-DETECT POSISI TARGET VIA PUNCH
 -- ═══════════════════════════════════════
 
-local detectedItemId = 2  -- Default Dirt Block
-local detectedItemName = "Dirt Block"
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
 local RemoteFist  = Remotes:WaitForChild("PlayerFist")
 
--- Hook __namecall untuk tangkap item ID saat player place manual
+-- Hook __namecall: saat player punch manual, tangkap posisi grid-nya
 local hookSuccess = false
+local punchDetected = false
 pcall(function()
     local mt = getrawmetatable(game)
     local oldNamecall = mt.__namecall
@@ -53,13 +40,13 @@ pcall(function()
     mt.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
         
-        -- Tangkap item ID dari PlayerPlaceItem (hanya saat bukan auto mode)
-        if method == "FireServer" and self == RemotePlace and not AutoPnB.isRunning() then
+        -- Tangkap posisi dari PlayerFist (hanya saat bukan auto mode)
+        if method == "FireServer" and self == RemoteFist and not AutoPnB.isRunning() then
             local args = {...}
-            if args[2] and type(args[2]) == "number" then
-                detectedItemId = args[2]
-                AutoPnB.ITEM_ID = args[2]
-                detectedItemName = itemIdToName[args[2]] or ("Unknown #" .. args[2])
+            if args[1] and typeof(args[1]) == "Vector2" then
+                AutoPnB.TARGET_X = args[1].X
+                AutoPnB.TARGET_Y = args[1].Y
+                punchDetected = true
             end
         end
         
@@ -92,12 +79,13 @@ local TabPnB = Window:CreateTab("⚒️ Auto PnB", 4483362458)
 -- Status labels
 local PosLabel    = TabPnB:CreateLabel("📍 Posisi: belum sync")
 local TargetLabel = TabPnB:CreateLabel("🎯 Target: X=0  Y=0")
-local ItemLabel   = TabPnB:CreateLabel("🧱 Item: Dirt Block [2]")
 local StatusLabel = TabPnB:CreateLabel("Status: Idle")
 local CycleLabel  = TabPnB:CreateLabel("Siklus: 0")
 
-if not hookSuccess then
-    TabPnB:CreateLabel("⚠️ Hook gagal - pakai slider ID manual")
+if hookSuccess then
+    TabPnB:CreateLabel("✅ Punch Detection aktif — punch blok untuk set target")
+else
+    TabPnB:CreateLabel("⚠️ Hook gagal - pakai slider manual")
 end
 
 -- Auto-sync posisi
@@ -154,15 +142,12 @@ TabPnB:CreateSlider({
 
 -- Manual item ID (fallback kalau hook gagal)
 TabPnB:CreateSlider({
-    Name = "Item ID (Manual / Fallback)",
+    Name = "Item ID",
     Range = {1, 500},
     Increment = 1,
     CurrentValue = 2,
     Callback = function(value)
         AutoPnB.ITEM_ID = value
-        detectedItemId = value
-        detectedItemName = itemIdToName[value] or ("Unknown #" .. value)
-        ItemLabel:Set("🧱 Item: " .. detectedItemName .. " [" .. value .. "]")
     end,
 })
 
@@ -185,7 +170,7 @@ TabPnB:CreateToggle({
             AutoPnB.start()
             Rayfield:Notify({
                 Title = "Auto PnB",
-                Content = detectedItemName .. " [" .. detectedItemId .. "] di X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y,
+                Content = "Target: X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y .. " | Item: " .. AutoPnB.ITEM_ID,
                 Duration = 3
             })
         else
@@ -214,8 +199,11 @@ spawn(function()
             end
         end
         
-        -- Update detected item
-        ItemLabel:Set("🧱 Item: " .. detectedItemName .. " [" .. detectedItemId .. "]")
+        -- Update target dari punch detection
+        if punchDetected then
+            TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y .. " (punch)")
+            punchDetected = false
+        end
         
         -- Update status
         StatusLabel:Set("Status: " .. AutoPnB.getStatus())
