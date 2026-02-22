@@ -30,27 +30,65 @@ local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
 
 local detectMode = false
 local hookSuccess = false
+local hookMethod = "none"
 
-pcall(function()
-    local mt = getrawmetatable(game)
-    local oldNamecall = mt.__namecall
-    setreadonly(mt, false)
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        
-        if method == "FireServer" and self == RemotePlace and detectMode and not AutoPnB.isRunning() then
-            local args = {...}
-            if args[2] and type(args[2]) == "number" then
-                AutoPnB.ITEM_ID = args[2]
-                detectMode = false
-            end
+-- Fungsi callback yang dipanggil saat detect
+local function onDetectPlace(args)
+    if detectMode and not AutoPnB.isRunning() then
+        if args[2] and type(args[2]) == "number" then
+            AutoPnB.ITEM_ID = args[2]
+            detectMode = false
         end
-        
-        return oldNamecall(self, ...)
+    end
+end
+
+-- Method 1: hookmetamethod (Delta, Fluxus)
+if not hookSuccess then
+    pcall(function()
+        local old
+        old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            if getnamecallmethod() == "FireServer" and self == RemotePlace then
+                onDetectPlace({...})
+            end
+            return old(self, ...)
+        end))
+        hookSuccess = true
+        hookMethod = "hookmetamethod"
     end)
-    setreadonly(mt, true)
-    hookSuccess = true
-end)
+end
+
+-- Method 2: getrawmetatable + newcclosure
+if not hookSuccess then
+    pcall(function()
+        local mt = getrawmetatable(game)
+        local oldNamecall = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            if getnamecallmethod() == "FireServer" and self == RemotePlace then
+                onDetectPlace({...})
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+        hookSuccess = true
+        hookMethod = "rawmetatable"
+    end)
+end
+
+-- Method 3: hookfunction
+if not hookSuccess then
+    pcall(function()
+        local oldFire
+        oldFire = hookfunction(RemotePlace.FireServer, function(self, ...)
+            if self == RemotePlace then
+                onDetectPlace({...})
+            end
+            return oldFire(self, ...)
+        end)
+        hookSuccess = true
+        hookMethod = "hookfunction"
+    end)
+end
 
 -- ═══════════════════════════════════════
 -- WARNA & STYLE
@@ -83,7 +121,7 @@ gui.Parent = player.PlayerGui
 -- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 280, 0, 420)
+mainFrame.Size = UDim2.new(0, 280, 0, 460)
 mainFrame.Position = UDim2.new(0, 20, 0.5, -210)
 mainFrame.BackgroundColor3 = COLORS.bg
 mainFrame.BorderSizePixel = 0
@@ -187,7 +225,7 @@ minBtn.MouseButton1Click:Connect(function()
         contentFrame.Visible = not minimized
         mainFrame.Size = minimized 
             and UDim2.new(0, 280, 0, 35) 
-            or UDim2.new(0, 280, 0, 420)
+            or UDim2.new(0, 280, 0, 460)
     end
 end)
 
@@ -226,13 +264,13 @@ posLabel.Parent = contentFrame
 -- ═══════════════════════════════════════
 
 local itemFrame = Instance.new("Frame")
-itemFrame.Size = UDim2.new(1, 0, 0, 28)
+itemFrame.Size = UDim2.new(1, 0, 0, 60)
 itemFrame.Position = UDim2.new(0, 0, 0, 22)
 itemFrame.BackgroundTransparency = 1
 itemFrame.Parent = contentFrame
 
 local itemLabel = Instance.new("TextLabel")
-itemLabel.Size = UDim2.new(0, 80, 1, 0)
+itemLabel.Size = UDim2.new(0, 80, 0, 24)
 itemLabel.BackgroundTransparency = 1
 itemLabel.Text = "🧱 Item ID:"
 itemLabel.TextColor3 = COLORS.textDim
@@ -242,8 +280,8 @@ itemLabel.TextXAlignment = Enum.TextXAlignment.Left
 itemLabel.Parent = itemFrame
 
 local itemInput = Instance.new("TextBox")
-itemInput.Size = UDim2.new(0, 50, 0, 24)
-itemInput.Position = UDim2.new(0, 85, 0, 2)
+itemInput.Size = UDim2.new(0, 60, 0, 24)
+itemInput.Position = UDim2.new(0, 85, 0, 0)
 itemInput.BackgroundColor3 = COLORS.cellOff
 itemInput.Text = "2"
 itemInput.TextColor3 = COLORS.textWhite
@@ -264,36 +302,35 @@ itemInput.FocusLost:Connect(function()
     end
 end)
 
--- Select Item button
+-- Select Item button (baris sendiri, full width)
 local selectBtn = Instance.new("TextButton")
-selectBtn.Size = UDim2.new(0, 100, 0, 24)
-selectBtn.Position = UDim2.new(0, 145, 0, 2)
-selectBtn.BackgroundColor3 = COLORS.accent
-selectBtn.Text = "🔍 Select"
-selectBtn.TextColor3 = COLORS.textWhite
-selectBtn.TextSize = 12
-selectBtn.Font = Enum.Font.GothamBold
+selectBtn.Size = UDim2.new(1, 0, 0, 28)
+selectBtn.Position = UDim2.new(0, 0, 0, 30)
 selectBtn.BorderSizePixel = 0
+selectBtn.TextSize = 13
+selectBtn.Font = Enum.Font.GothamBold
+selectBtn.TextColor3 = COLORS.textWhite
 selectBtn.Parent = itemFrame
 Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
 
-if not hookSuccess then
+if hookSuccess then
+    selectBtn.BackgroundColor3 = COLORS.accent
+    selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
+else
     selectBtn.BackgroundColor3 = COLORS.cellOff
-    selectBtn.Text = "⚠️ No Hook"
+    selectBtn.Text = "⚠️ Hook gagal — ketik ID manual di atas"
 end
 
 selectBtn.MouseButton1Click:Connect(function()
     if not hookSuccess then return end
     if detectMode then
-        -- Cancel detect
         detectMode = false
         selectBtn.BackgroundColor3 = COLORS.accent
-        selectBtn.Text = "🔍 Select"
+        selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
     else
-        -- Enter detect mode
         detectMode = true
         selectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
-        selectBtn.Text = "⏳ Place 1 blok..."
+        selectBtn.Text = "⏳ Menunggu... Place 1 blok sekarang!"
     end
 end)
 
@@ -309,7 +346,7 @@ local gridTotalSize = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP
 local gridFrame = Instance.new("Frame")
 gridFrame.Name = "Grid"
 gridFrame.Size = UDim2.new(0, gridTotalSize, 0, gridTotalSize)
-gridFrame.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 58)
+gridFrame.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 90)
 gridFrame.BackgroundTransparency = 1
 gridFrame.Parent = contentFrame
 
@@ -367,7 +404,7 @@ end
 -- Grid label
 local gridLabel = Instance.new("TextLabel")
 gridLabel.Size = UDim2.new(0, gridTotalSize, 0, 16)
-gridLabel.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 58 + gridTotalSize + 4)
+gridLabel.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 90 + gridTotalSize + 4)
 gridLabel.BackgroundTransparency = 1
 gridLabel.Text = "Klik cell untuk set target PnB"
 gridLabel.TextColor3 = COLORS.textDim
@@ -379,7 +416,7 @@ gridLabel.Parent = contentFrame
 -- CONTROLS: START / STOP
 -- ═══════════════════════════════════════
 
-local controlY = 58 + gridTotalSize + 24
+local controlY = 90 + gridTotalSize + 24
 
 local startBtn = Instance.new("TextButton")
 startBtn.Size = UDim2.new(0.48, 0, 0, 32)
