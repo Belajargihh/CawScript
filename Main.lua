@@ -33,8 +33,6 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
     Name = "WC Automation | Koziz Style",
-    LoadingTitle = "Loading Modules...",
-    LoadingSubtitle = "by Hans_01261",
     ConfigurationSaving = {
         Enabled = false
     },
