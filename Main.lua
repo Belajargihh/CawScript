@@ -3,7 +3,7 @@
     UI Utama — Rayfield Interface (Craft a World)
     
     Tab:
-    1. Auto PnB — Toggle, target position, item ID
+    1. Auto PnB — Toggle, target position, item dropdown
     2. Settings — Delay config, antiban
     3. Info — Panduan penggunaan
     
@@ -18,6 +18,21 @@ local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/mai
 
 local AutoPnB = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"))()
 local Antiban = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
+
+-- Load Item Catalog dari JSON
+local HttpService = game:GetService("HttpService")
+local itemsRaw = game:HttpGet(GITHUB_BASE .. "Assets/items.json")
+local itemsData = HttpService:JSONDecode(itemsRaw)
+
+-- Build dropdown list & lookup
+local itemDropdownList = {}  -- {"Dirt Block [2]", "Dirt Sapling [4]", ...}
+local itemNameToId = {}      -- {["Dirt Block [2]"] = 2, ...}
+
+for _, item in ipairs(itemsData.items) do
+    local label = item.name .. " [" .. item.id .. "]"
+    table.insert(itemDropdownList, label)
+    itemNameToId[label] = item.id
+end
 
 -- Inisialisasi dependencies
 AutoPnB.init(Antiban)
@@ -70,14 +85,22 @@ TabPnB:CreateSlider({
     end,
 })
 
--- Item ID
-TabPnB:CreateSlider({
-    Name = "Item ID (2 = Dirt Block)",
-    Range = {1, 500},
-    Increment = 1,
-    CurrentValue = 2,
-    Callback = function(value)
-        AutoPnB.ITEM_ID = value
+-- Pilih Item (Dropdown)
+TabPnB:CreateDropdown({
+    Name = "Pilih Item",
+    Options = itemDropdownList,
+    CurrentOption = {"Dirt Block [2]"},
+    Callback = function(option)
+        local selected = option[1] or option
+        local id = itemNameToId[selected]
+        if id then
+            AutoPnB.ITEM_ID = id
+            Rayfield:Notify({
+                Title = "Item Dipilih",
+                Content = selected,
+                Duration = 2
+            })
+        end
     end,
 })
 
