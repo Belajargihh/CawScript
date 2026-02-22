@@ -16,11 +16,10 @@
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 
-local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
-local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua" .. NOCACHE))()
-local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua" .. NOCACHE))()
-
 AutoPnB.init(Coordinates, Antiban)
+
+local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
+ManagerModule.init(Coordinates, Antiban)
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -33,14 +32,14 @@ local player = Players.LocalPlayer
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
 local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
 
-local detectMode = false
+local detectCallback = nil
 local hookSuccess = false
 
 local function onDetectPlace(args)
-    if detectMode and not AutoPnB.isRunning() then
+    if detectCallback and not AutoPnB.isRunning() and not ManagerModule.isDropRunning() and not ManagerModule.isCollectRunning() then
         if args[2] and type(args[2]) == "number" then
-            AutoPnB.ITEM_ID = args[2]
-            detectMode = false
+            detectCallback(args[2])
+            detectCallback = nil
         end
     end
 end
@@ -443,14 +442,18 @@ end
 
 selectBtn.MouseButton1Click:Connect(function()
     if not hookSuccess then return end
-    if detectMode then
-        detectMode = false
+    if detectCallback then
+        detectCallback = nil
         selectBtn.BackgroundColor3 = C.accent
         selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
     else
-        detectMode = true
         selectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
         selectBtn.Text = "⏳ Menunggu... Place 1 blok sekarang!"
+        detectCallback = function(id)
+            AutoPnB.ITEM_ID = id
+            selectBtn.BackgroundColor3 = C.accent
+            selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
+        end
     end
 end)
 
@@ -642,14 +645,330 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
--- Store tab 1 frame
-tabFrames[1] = tabPnB
-
 -- ═══════════════════════════════════════
--- TAB 2, 3, 4: COMING SOON
+-- TAB 2: MANAGER
 -- ═══════════════════════════════════════
 
-tabFrames[2] = createComingSoonTab(contentContainer, "Manager")
+local tabManager = Instance.new("ScrollingFrame")
+tabManager.Size = UDim2.new(1, -10, 1, -10)
+tabManager.Position = UDim2.new(0, 5, 0, 5)
+tabManager.BackgroundTransparency = 1
+tabManager.BorderSizePixel = 0
+tabManager.ScrollBarThickness = 2
+tabManager.Visible = false
+tabManager.Parent = contentContainer
+
+local managerList = Instance.new("UIListLayout")
+managerList.Padding = UDim.new(0, 10)
+managerList.SortOrder = Enum.SortOrder.LayoutOrder
+managerList.Parent = tabManager
+
+local function createSection(name, height)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, height)
+    frame.BackgroundColor3 = C.sidebar
+    frame.BorderSizePixel = 0
+    frame.Parent = tabManager
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 24)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = C.white
+    title.TextSize = 13
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -20, 1, -28)
+    content.Position = UDim2.new(0, 10, 0, 24)
+    content.BackgroundTransparency = 1
+    content.Parent = frame
+    
+    return content
+end
+
+-- --- AUTO DROP SECTION ---
+local dropContent = createSection("🗑️ Auto Drop", 120)
+
+local dropItemRow = Instance.new("Frame")
+dropItemRow.Size = UDim2.new(1, 0, 0, 50)
+dropItemRow.BackgroundTransparency = 1
+dropItemRow.Parent = dropContent
+
+local dropItemDisplay = Instance.new("TextLabel")
+dropItemDisplay.Size = UDim2.new(0, 50, 0, 22)
+dropItemDisplay.BackgroundColor3 = C.cellOff
+dropItemDisplay.Text = "1"
+dropItemDisplay.TextColor3 = C.white
+dropItemDisplay.TextSize = 13
+dropItemDisplay.Font = Enum.Font.GothamBold
+dropItemDisplay.BorderSizePixel = 0
+dropItemDisplay.Parent = dropItemRow
+Instance.new("UICorner", dropItemDisplay).CornerRadius = UDim.new(0, 5)
+
+local dropSelectBtn = Instance.new("TextButton")
+dropSelectBtn.Size = UDim2.new(1, -60, 0, 22)
+dropSelectBtn.Position = UDim2.new(0, 60, 0, 0)
+dropSelectBtn.BackgroundColor3 = hookSuccess and C.accent or C.btnGrey
+dropSelectBtn.Text = hookSuccess and "🔍 Select Item" or "⚠️ No Hook"
+dropSelectBtn.TextColor3 = C.white
+dropSelectBtn.TextSize = 11
+dropSelectBtn.Font = Enum.Font.GothamBold
+dropSelectBtn.BorderSizePixel = 0
+dropSelectBtn.Parent = dropItemRow
+Instance.new("UICorner", dropSelectBtn).CornerRadius = UDim.new(0, 5)
+
+dropSelectBtn.MouseButton1Click:Connect(function()
+    if not hookSuccess then return end
+    if detectCallback then
+        detectCallback = nil
+        dropSelectBtn.BackgroundColor3 = C.accent
+        dropSelectBtn.Text = "🔍 Select Item"
+    else
+        dropSelectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
+        dropSelectBtn.Text = "⏳ Place 1 blok..."
+        detectCallback = function(id)
+            ManagerModule.DROP_ITEM_ID = id
+            dropItemDisplay.Text = tostring(id)
+            dropSelectBtn.BackgroundColor3 = C.accent
+            dropSelectBtn.Text = "🔍 Select Item"
+        end
+    end
+end)
+
+-- Amount Slider
+local amtLabel = Instance.new("TextLabel")
+amtLabel.Size = UDim2.new(1, 0, 0, 20)
+amtLabel.Position = UDim2.new(0, 0, 0, 28)
+amtLabel.BackgroundTransparency = 1
+amtLabel.Text = "Jumlah Trash: 1"
+amtLabel.TextColor3 = C.dim
+amtLabel.TextSize = 11
+amtLabel.Font = Enum.Font.Gotham
+amtLabel.TextXAlignment = Enum.TextXAlignment.Left
+amtLabel.Parent = dropItemRow
+
+local amtSliderBg = Instance.new("Frame")
+amtSliderBg.Size = UDim2.new(1, 0, 0, 6)
+amtSliderBg.Position = UDim2.new(0, 0, 0, 48)
+amtSliderBg.BackgroundColor3 = C.cellOff
+amtSliderBg.BorderSizePixel = 0
+amtSliderBg.Parent = dropItemRow
+Instance.new("UICorner", amtSliderBg).CornerRadius = UDim.new(0, 3)
+
+local amtSliderFill = Instance.new("Frame")
+amtSliderFill.Size = UDim2.new(0.01, 0, 1, 0)
+amtSliderFill.BackgroundColor3 = C.accent
+amtSliderFill.BorderSizePixel = 0
+amtSliderFill.Parent = amtSliderBg
+Instance.new("UICorner", amtSliderFill).CornerRadius = UDim.new(0, 3)
+
+local amtSliderHit = Instance.new("TextButton")
+amtSliderHit.Size = UDim2.new(1, 0, 0, 16)
+amtSliderHit.Position = UDim2.new(0, 0, 0, 43)
+amtSliderHit.BackgroundTransparency = 1
+amtSliderHit.Text = ""
+amtSliderHit.Parent = dropItemRow
+
+local amtDragging = false
+amtSliderHit.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        amtDragging = true
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if amtDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local rel = math.clamp((input.Position.X - amtSliderBg.AbsolutePosition.X) / amtSliderBg.AbsoluteSize.X, 0, 1)
+        amtSliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        local val = math.max(math.floor(rel * 200), 1)
+        ManagerModule.DROP_AMOUNT = val
+        amtLabel.Text = "Jumlah Trash: " .. val
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        amtDragging = false
+    end
+end)
+
+local dropToggle = Instance.new("TextButton")
+dropToggle.Size = UDim2.new(1, 0, 0, 26)
+dropToggle.Position = UDim2.new(0, 0, 0, 64)
+dropToggle.BackgroundColor3 = C.btnGrey
+dropToggle.Text = "OFF"
+dropToggle.TextColor3 = C.white
+dropToggle.TextSize = 12
+dropToggle.Font = Enum.Font.GothamBold
+dropToggle.Parent = dropContent
+Instance.new("UICorner", dropToggle).CornerRadius = UDim.new(0, 6)
+
+dropToggle.MouseButton1Click:Connect(function()
+    if ManagerModule.isDropRunning() then
+        ManagerModule.stopDrop()
+        dropToggle.Text = "OFF"
+        dropToggle.BackgroundColor3 = C.btnGrey
+    else
+        ManagerModule.startDrop()
+        dropToggle.Text = "ON"
+        dropToggle.BackgroundColor3 = C.btnStart
+    end
+end)
+
+-- --- AUTO COLLECT SECTION ---
+local collectContent = createSection("🚜 Auto Farm Radius", 140)
+
+local function createManagerItem(parent, y, label, defaultId, onSelected)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 24)
+    row.Position = UDim2.new(0, 0, 0, y)
+    row.BackgroundTransparency = 1
+    row.Parent = parent
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 50, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.TextColor3 = C.dim
+    lbl.TextSize = 10
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = row
+    
+    local disp = Instance.new("TextLabel")
+    disp.Size = UDim2.new(0, 40, 0, 20)
+    disp.Position = UDim2.new(0, 55, 0, 2)
+    disp.BackgroundColor3 = C.cellOff
+    disp.Text = tostring(defaultId)
+    disp.TextColor3 = C.white
+    disp.TextSize = 12
+    disp.Font = Enum.Font.GothamBold
+    disp.BorderSizePixel = 0
+    disp.Parent = row
+    Instance.new("UICorner", disp).CornerRadius = UDim.new(0, 4)
+    
+    local sel = Instance.new("TextButton")
+    sel.Size = UDim2.new(1, -105, 0, 20)
+    sel.Position = UDim2.new(0, 105, 0, 2)
+    sel.BackgroundColor3 = C.accent
+    sel.Text = "🔍 Select"
+    sel.TextColor3 = C.white
+    sel.TextSize = 10
+    sel.Font = Enum.Font.GothamBold
+    sel.BorderSizePixel = 0
+    sel.Parent = row
+    Instance.new("UICorner", sel).CornerRadius = UDim.new(0, 4)
+    
+    sel.MouseButton1Click:Connect(function()
+        if not hookSuccess then return end
+        if detectCallback then
+            detectCallback = nil
+            sel.BackgroundColor3 = C.accent
+            sel.Text = "🔍 Select"
+        else
+            sel.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
+            sel.Text = "Wait..."
+            detectCallback = function(id)
+                onSelected(id)
+                disp.Text = tostring(id)
+                sel.BackgroundColor3 = C.accent
+                sel.Text = "🔍 Select"
+            end
+        end
+    end)
+end
+
+createManagerItem(collectContent, 0, "Blok ID:", 1, function(id) ManagerModule.COLLECT_BLOCK_ID = id end)
+createManagerItem(collectContent, 28, "Sapling ID:", 1, function(id) ManagerModule.COLLECT_SAPLING_ID = id end)
+
+-- Range Slider
+local rangeLabel = Instance.new("TextLabel")
+rangeLabel.Size = UDim2.new(1, 0, 0, 16)
+rangeLabel.Position = UDim2.new(0, 0, 0, 56)
+rangeLabel.BackgroundTransparency = 1
+rangeLabel.Text = "Radius: 2 Grid"
+rangeLabel.TextColor3 = C.dim
+rangeLabel.TextSize = 11
+rangeLabel.Font = Enum.Font.Gotham
+rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+rangeLabel.Parent = collectContent
+
+local rangeSliderBg = Instance.new("Frame")
+rangeSliderBg.Size = UDim2.new(1, 0, 0, 4)
+rangeSliderBg.Position = UDim2.new(0, 0, 0, 74)
+rangeSliderBg.BackgroundColor3 = C.cellOff
+rangeSliderBg.BorderSizePixel = 0
+rangeSliderBg.Parent = collectContent
+Instance.new("UICorner", rangeSliderBg).CornerRadius = UDim.new(0, 2)
+
+local rangeSliderFill = Instance.new("Frame")
+rangeSliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+rangeSliderFill.BackgroundColor3 = C.accent
+rangeSliderFill.BorderSizePixel = 0
+rangeSliderFill.Parent = rangeSliderBg
+Instance.new("UICorner", rangeSliderFill).CornerRadius = UDim.new(0, 2)
+
+local rangeSliderHit = Instance.new("TextButton")
+rangeSliderHit.Size = UDim2.new(1, 0, 0, 12)
+rangeSliderHit.Position = UDim2.new(0, 0, 0, 70)
+rangeSliderHit.BackgroundTransparency = 1
+rangeSliderHit.Text = ""
+rangeSliderHit.Parent = collectContent
+
+local rangeDrag = false
+rangeSliderHit.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        rangeDrag = true
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if rangeDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local rel = math.clamp((input.Position.X - rangeSliderBg.AbsolutePosition.X) / rangeSliderBg.AbsoluteSize.X, 0, 1)
+        rangeSliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        local val = math.max(math.floor(rel * 5), 1)
+        ManagerModule.COLLECT_RANGE = val
+        rangeLabel.Text = "Radius: " .. val .. " Grid"
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        rangeDrag = false
+    end
+end)
+
+local collectToggle = Instance.new("TextButton")
+collectToggle.Size = UDim2.new(1, 0, 0, 26)
+collectToggle.Position = UDim2.new(0, 0, 0, 88)
+collectToggle.BackgroundColor3 = C.btnGrey
+collectToggle.Text = "OFF"
+collectToggle.TextColor3 = C.white
+collectToggle.TextSize = 12
+collectToggle.Font = Enum.Font.GothamBold
+collectToggle.Parent = collectContent
+Instance.new("UICorner", collectToggle).CornerRadius = UDim.new(0, 6)
+
+collectToggle.MouseButton1Click:Connect(function()
+    if ManagerModule.isCollectRunning() then
+        ManagerModule.stopCollect()
+        collectToggle.Text = "OFF"
+        collectToggle.BackgroundColor3 = C.btnGrey
+    else
+        ManagerModule.startCollect()
+        collectToggle.Text = "ON"
+        collectToggle.BackgroundColor3 = C.btnStart
+    end
+end)
+
+-- Store tab 2 frame
+tabFrames[2] = tabManager
+
+-- ═══════════════════════════════════════
+-- TAB 3, 4: COMING SOON
+-- ═══════════════════════════════════════
+
 tabFrames[3] = createComingSoonTab(contentContainer, "Rotasi")
 tabFrames[4] = createComingSoonTab(contentContainer, "Bot")
 
@@ -659,27 +978,28 @@ tabFrames[4] = createComingSoonTab(contentContainer, "Bot")
 
 spawn(function()
     while gui and gui.Parent do
+        -- Update posisi
         local gx, gy = Coordinates.getGridPosition()
         if gx then
             posLabel.Text = "📍 Posisi: X=" .. gx .. "  Y=" .. gy
         end
         
-        itemDisplay.Text = tostring(AutoPnB.ITEM_ID)
-        if hookSuccess and not detectMode then
-            selectBtn.BackgroundColor3 = C.accent
-            selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
+        -- Update PnB Tab
+        if activeTab == 1 then
+            itemDisplay.Text = tostring(AutoPnB.ITEM_ID)
+            statusLabel.Text = "Status: " .. AutoPnB.getStatus()
+            cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount()
+            
+            if AutoPnB.isRunning() then
+                startBtn.BackgroundColor3 = C.btnGrey
+                stopBtn.BackgroundColor3 = C.btnStop
+            else
+                startBtn.BackgroundColor3 = C.btnStart
+                stopBtn.BackgroundColor3 = C.btnGrey
+            end
         end
         
-        statusLabel.Text = "Status: " .. AutoPnB.getStatus()
-        cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount()
-        
-        if AutoPnB.isRunning() then
-            startBtn.BackgroundColor3 = C.btnGrey
-            stopBtn.BackgroundColor3 = C.btnStop
-        else
-            startBtn.BackgroundColor3 = C.btnStart
-            stopBtn.BackgroundColor3 = C.btnGrey
-        end
+        -- Update Manager Tab UI (handled by local variables in that tab's definition)
         
         task.wait(0.5)
     end
