@@ -16,10 +16,12 @@
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 
+print("[CawScript] Memulai load dependencies...")
 local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua" .. NOCACHE))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua" .. NOCACHE))()
 
+print("[CawScript] Initializing modules...")
 AutoPnB.init(Coordinates, Antiban)
 
 local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
@@ -29,12 +31,13 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
--- ═══════════════════════════════════════
--- REMOTE HOOK: DETECT ITEM ID
--- ═══════════════════════════════════════
+print("[CawScript] Hooking remotes...")
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+local RemotePlace = Remotes and Remotes:WaitForChild("PlayerPlaceItem", 2)
 
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
+if not RemotePlace then
+    warn("[CawScript] WARNING: Remote PlayerPlaceItem tidak ditemukan! Fitur Auto PnB & Select Item mungkin tidak jalan.")
+end
 
 local detectCallback = nil
 local hookSuccess = false
@@ -1008,3 +1011,5 @@ spawn(function()
         task.wait(0.5)
     end
 end)
+
+print("[CawScript] UI Berhasil dimuat! ✅")
