@@ -1,13 +1,13 @@
 --[[
     AutoPnB.lua
-    Module: Auto Place and Break — Queue System
+    Module: Auto Place and Break — Craft a World
     
-    Logika Antrian:
-    1. Pasang Blok (Place)
-    2. Pukul Blok (Break)  
-    3. Ambil Drop (Collect)
+    Siklus:
+    1. Place blok di posisi target (PlayerPlaceItem)
+    2. Punch blok di posisi target (PlayerFist)
+    3. Ulangi
     
-    Semua aksi dikirim via FireServer ke RemoteEvent game.
+    Remote Path: ReplicatedStorage.Remotes
 ]]
 
 local AutoPnB = {}
@@ -15,102 +15,76 @@ local AutoPnB = {}
 -- ═══════════════════════════════════════
 -- DEPENDENCIES
 -- ═══════════════════════════════════════
-local Coordinates -- akan di-inject via init()
 local Antiban     -- akan di-inject via init()
+
+-- Remote references (cache sekali aja)
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
+local RemoteFist  = Remotes:WaitForChild("PlayerFist")
 
 -- ═══════════════════════════════════════
 -- KONFIGURASI
 -- ═══════════════════════════════════════
 
--- ⚠️ GANTI NAMA REMOTE INI SESUAI GAME KAMU (pakai Remote Spy)
-AutoPnB.REMOTE_PLACE = "PlaceBlock"     -- Nama RemoteEvent untuk pasang blok
-AutoPnB.REMOTE_BREAK = "BreakBlock"     -- Nama RemoteEvent untuk pukul blok
-AutoPnB.REMOTE_COLLECT = "CollectDrop"  -- Nama RemoteEvent untuk ambil item
-
-AutoPnB.DELAY_PLACE   = 0.2    -- Jeda setelah pasang blok (detik)
-AutoPnB.DELAY_BREAK   = 0.15   -- Jeda setelah pukul blok
-AutoPnB.DELAY_COLLECT  = 0.1   -- Jeda setelah ambil drop
-AutoPnB.DELAY_CYCLE    = 0.3   -- Jeda antar siklus penuh
+AutoPnB.ITEM_ID      = 2        -- Item ID (2 = Dirt Block)
+AutoPnB.TARGET_X     = 0        -- Target grid X
+AutoPnB.TARGET_Y     = 0        -- Target grid Y
+AutoPnB.DELAY_PLACE  = 0.2      -- Jeda setelah place (detik)
+AutoPnB.DELAY_BREAK  = 0.15     -- Jeda setelah punch
+AutoPnB.DELAY_CYCLE  = 0.3      -- Jeda antar siklus
 
 -- State
 AutoPnB._running    = false
-AutoPnB._targetX    = 0
-AutoPnB._targetY    = 0
 AutoPnB._cycleCount = 0
 AutoPnB._statusText = "Idle"
 AutoPnB._thread     = nil
 
 -- ═══════════════════════════════════════
--- INTERNAL: Kirim Remote ke Server
+-- INTERNAL: Aksi ke Server
 -- ═══════════════════════════════════════
 
-local function getRemote(remoteName)
-    -- Cari RemoteEvent di ReplicatedStorage atau workspace
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild(remoteName)
-    if not remote then
-        remote = workspace:FindFirstChild(remoteName)
-    end
-    return remote
+--- Place blok di posisi target
+local function doPlace(gridX, gridY, itemId)
+    RemotePlace:FireServer(Vector2.new(gridX, gridY), itemId)
 end
 
-local function fireRemote(remoteName, ...)
-    local remote = getRemote(remoteName)
-    if remote and remote:IsA("RemoteEvent") then
-        remote:FireServer(...)
-        return true
-    else
-        warn("[AutoPnB] Remote tidak ditemukan: " .. remoteName)
-        return false
-    end
+--- Punch blok di posisi target
+local function doPunch(gridX, gridY)
+    RemoteFist:FireServer(Vector2.new(gridX, gridY))
 end
 
 -- ═══════════════════════════════════════
 -- QUEUE STEPS
 -- ═══════════════════════════════════════
 
---- Step 1: Pasang blok di koordinat target
-local function stepPlace(gridX, gridY)
+--- Step 1: Pasang blok
+local function stepPlace(gridX, gridY, itemId)
     AutoPnB._statusText = "Memasang blok..."
     
     if Antiban then
         Antiban.throttle(function()
-            fireRemote(AutoPnB.REMOTE_PLACE, gridX, gridY)
+            doPlace(gridX, gridY, itemId)
         end)
     else
-        fireRemote(AutoPnB.REMOTE_PLACE, gridX, gridY)
+        doPlace(gridX, gridY, itemId)
     end
     
     task.wait(AutoPnB.DELAY_PLACE)
 end
 
---- Step 2: Pukul blok di koordinat target
+--- Step 2: Pukul/Punch blok
 local function stepBreak(gridX, gridY)
     AutoPnB._statusText = "Memukul blok..."
     
     if Antiban then
         Antiban.throttle(function()
-            fireRemote(AutoPnB.REMOTE_BREAK, gridX, gridY)
+            doPunch(gridX, gridY)
         end)
     else
-        fireRemote(AutoPnB.REMOTE_BREAK, gridX, gridY)
+        doPunch(gridX, gridY)
     end
     
     task.wait(AutoPnB.DELAY_BREAK)
-end
-
---- Step 3: Ambil drop dari blok yang dipecah
-local function stepCollect(gridX, gridY)
-    AutoPnB._statusText = "Mengambil drop..."
-    
-    if Antiban then
-        Antiban.throttle(function()
-            fireRemote(AutoPnB.REMOTE_COLLECT, gridX, gridY)
-        end)
-    else
-        fireRemote(AutoPnB.REMOTE_COLLECT, gridX, gridY)
-    end
-    
-    task.wait(AutoPnB.DELAY_COLLECT)
 end
 
 -- ═══════════════════════════════════════
@@ -119,34 +93,19 @@ end
 
 local function pnbLoop()
     while AutoPnB._running do
-        -- Ambil posisi grid terbaru dari karakter
-        local gridX, gridY = Coordinates.getGridPosition()
+        local gx = AutoPnB.TARGET_X
+        local gy = AutoPnB.TARGET_Y
+        local itemId = AutoPnB.ITEM_ID
         
-        if gridX then
-            -- Update target ke posisi saat ini
-            AutoPnB._targetX = gridX
-            AutoPnB._targetY = gridY
-            
-            -- Pastikan posisi valid
-            if Coordinates.isInBounds(gridX, gridY) then
-                -- Jalankan antrian: Place → Break → Collect
-                stepPlace(gridX, gridY)
-                if not AutoPnB._running then break end
-                
-                stepBreak(gridX, gridY)
-                if not AutoPnB._running then break end
-                
-                stepCollect(gridX, gridY)
-                if not AutoPnB._running then break end
-                
-                AutoPnB._cycleCount = AutoPnB._cycleCount + 1
-                AutoPnB._statusText = "Siklus #" .. AutoPnB._cycleCount .. " selesai"
-            else
-                AutoPnB._statusText = "Di luar area valid!"
-            end
-        else
-            AutoPnB._statusText = "Karakter tidak ditemukan"
-        end
+        -- Siklus: Place → Punch
+        stepPlace(gx, gy, itemId)
+        if not AutoPnB._running then break end
+        
+        stepBreak(gx, gy)
+        if not AutoPnB._running then break end
+        
+        AutoPnB._cycleCount = AutoPnB._cycleCount + 1
+        AutoPnB._statusText = "Siklus #" .. AutoPnB._cycleCount .. " selesai"
         
         -- Jeda antar siklus
         task.wait(AutoPnB.DELAY_CYCLE)
@@ -159,12 +118,20 @@ end
 -- PUBLIC API
 -- ═══════════════════════════════════════
 
---- Inisialisasi module dengan dependencies
--- @param coords table - Module Coordinates
--- @param antiban table|nil - Module Antiban (opsional)
-function AutoPnB.init(coords, antiban)
-    Coordinates = coords
+--- Inisialisasi module
+function AutoPnB.init(antiban)
     Antiban = antiban
+end
+
+--- Set target posisi grid
+function AutoPnB.setTarget(gridX, gridY)
+    AutoPnB.TARGET_X = gridX
+    AutoPnB.TARGET_Y = gridY
+end
+
+--- Set item ID yang mau di-place
+function AutoPnB.setItemId(id)
+    AutoPnB.ITEM_ID = id
 end
 
 --- Mulai Auto PnB
@@ -184,40 +151,24 @@ function AutoPnB.stop()
     AutoPnB._statusText = "Stopping..."
 end
 
---- Cek apakah Auto PnB sedang jalan
--- @return boolean
+--- Cek apakah lagi jalan
 function AutoPnB.isRunning()
     return AutoPnB._running
 end
 
---- Ambil status text untuk ditampilkan di UI
--- @return string
+--- Status text untuk UI
 function AutoPnB.getStatus()
     return AutoPnB._statusText
 end
 
---- Ambil jumlah siklus yang sudah selesai
--- @return number
+--- Jumlah siklus selesai
 function AutoPnB.getCycleCount()
     return AutoPnB._cycleCount
 end
 
---- Ambil target koordinat saat ini
--- @return number targetX, number targetY
+--- Target saat ini
 function AutoPnB.getTarget()
-    return AutoPnB._targetX, AutoPnB._targetY
-end
-
---- Set delay untuk setiap step
--- @param place number
--- @param breakDelay number
--- @param collect number
--- @param cycle number
-function AutoPnB.setDelays(place, breakDelay, collect, cycle)
-    AutoPnB.DELAY_PLACE   = place or AutoPnB.DELAY_PLACE
-    AutoPnB.DELAY_BREAK   = breakDelay or AutoPnB.DELAY_BREAK
-    AutoPnB.DELAY_COLLECT = collect or AutoPnB.DELAY_COLLECT
-    AutoPnB.DELAY_CYCLE   = cycle or AutoPnB.DELAY_CYCLE
+    return AutoPnB.TARGET_X, AutoPnB.TARGET_Y
 end
 
 return AutoPnB

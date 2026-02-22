@@ -1,12 +1,11 @@
 --[[
     Main.lua
-    UI Utama — Rayfield Interface
+    UI Utama — Rayfield Interface (Craft a World)
     
     Tab:
-    1. Coordinates — Real-time grid display + Re-Sync
-    2. Auto PnB — Toggle automation + status
-    3. Settings — Delay config, antiban, tema
-    4. Info — Panduan penggunaan
+    1. Auto PnB — Toggle, target position, item ID
+    2. Settings — Delay config, antiban
+    3. Info — Panduan penggunaan
     
     Cara pakai: Di-load oleh Index.lua via loadstring
 ]]
@@ -15,15 +14,13 @@
 -- LOAD DEPENDENCIES DARI GITHUB
 -- ═══════════════════════════════════════
 
--- ⚠️ GANTI URL INI SETELAH PUSH KE GITHUB
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 
-local Coordinates = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua"))()
-local AutoPnB    = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"))()
-local Antiban    = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
+local AutoPnB = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"))()
+local Antiban = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
 
--- Inisialisasi dependencies antar module
-AutoPnB.init(Coordinates, Antiban)
+-- Inisialisasi dependencies
+AutoPnB.init(Antiban)
 
 -- ═══════════════════════════════════════
 -- RAYFIELD UI
@@ -32,7 +29,7 @@ AutoPnB.init(Coordinates, Antiban)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "WC Automation | Koziz Style",
+    Name = "CawScript | Auto PnB",
     ConfigurationSaving = {
         Enabled = false
     },
@@ -40,80 +37,51 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ═══════════════════════════════════════
--- TAB 1: COORDINATES
--- ═══════════════════════════════════════
-
-local TabCoord = Window:CreateTab("📍 Coordinates", 4483362458)
-
-local CoordLabel = TabCoord:CreateLabel("Grid: Menunggu sync...")
-local RawLabel   = TabCoord:CreateLabel("Raw: —")
-
-TabCoord:CreateButton({
-    Name = "🔄 Re-Sync Position",
-    Callback = function()
-        local gridX, gridY = Coordinates.getGridPosition()
-        if gridX then
-            CoordLabel:Set("Grid: " .. Coordinates.formatDisplay(gridX, gridY))
-            RawLabel:Set(string.format("Raw: X=%.1f  Z=%.1f", 
-                Coordinates._lastRawX, Coordinates._lastRawY))
-            Rayfield:Notify({
-                Title = "Synced!",
-                Content = Coordinates.formatDisplay(gridX, gridY),
-                Duration = 2
-            })
-        else
-            CoordLabel:Set("Grid: Karakter tidak ditemukan!")
-        end
-    end,
-})
-
--- Auto-update koordinat setiap 0.5 detik
-local autoSyncEnabled = false
-
-TabCoord:CreateToggle({
-    Name = "Auto-Sync (Real-Time)",
-    CurrentValue = false,
-    Callback = function(value)
-        autoSyncEnabled = value
-    end,
-})
-
--- Deteksi objek di workspace
-local DetectLabel = TabCoord:CreateLabel("Objek: None")
-
-spawn(function()
-    while true do
-        if autoSyncEnabled then
-            local gridX, gridY = Coordinates.getGridPosition()
-            if gridX then
-                CoordLabel:Set("Grid: " .. Coordinates.formatDisplay(gridX, gridY))
-                RawLabel:Set(string.format("Raw: X=%.1f  Z=%.1f", 
-                    Coordinates._lastRawX, Coordinates._lastRawY))
-            end
-        end
-        
-        -- Deteksi tile highlight
-        local highlight = workspace:FindFirstChild("tileHighlight")
-        if highlight then
-            DetectLabel:Set("Objek: " .. tostring(highlight))
-        else
-            DetectLabel:Set("Objek: None")
-        end
-        
-        task.wait(0.5)
-    end
-end)
-
--- ═══════════════════════════════════════
--- TAB 2: AUTO PnB
+-- TAB 1: AUTO PnB
 -- ═══════════════════════════════════════
 
 local TabPnB = Window:CreateTab("⚒️ Auto PnB", 4483362458)
 
 local PnBStatusLabel = TabPnB:CreateLabel("Status: Idle")
 local PnBCycleLabel  = TabPnB:CreateLabel("Siklus: 0")
-local PnBTargetLabel = TabPnB:CreateLabel("Target: —")
+local PnBTargetLabel = TabPnB:CreateLabel("Target: X=0  Y=0")
 
+-- Input Target X
+TabPnB:CreateSlider({
+    Name = "Target Grid X",
+    Range = {0, 100},
+    Increment = 1,
+    CurrentValue = 0,
+    Callback = function(value)
+        AutoPnB.TARGET_X = value
+        PnBTargetLabel:Set("Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
+    end,
+})
+
+-- Input Target Y
+TabPnB:CreateSlider({
+    Name = "Target Grid Y",
+    Range = {0, 100},
+    Increment = 1,
+    CurrentValue = 0,
+    Callback = function(value)
+        AutoPnB.TARGET_Y = value
+        PnBTargetLabel:Set("Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
+    end,
+})
+
+-- Item ID
+TabPnB:CreateSlider({
+    Name = "Item ID (2 = Dirt Block)",
+    Range = {1, 500},
+    Increment = 1,
+    CurrentValue = 2,
+    Callback = function(value)
+        AutoPnB.ITEM_ID = value
+    end,
+})
+
+-- Toggle Auto PnB
 TabPnB:CreateToggle({
     Name = "Aktifkan Auto PnB",
     CurrentValue = false,
@@ -122,35 +90,33 @@ TabPnB:CreateToggle({
             AutoPnB.start()
             Rayfield:Notify({
                 Title = "Auto PnB",
-                Content = "Dimulai! Queue: Place → Break → Collect",
+                Content = "Dimulai! Target: X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y,
                 Duration = 3
             })
         else
             AutoPnB.stop()
             Rayfield:Notify({
                 Title = "Auto PnB",
-                Content = "Dihentikan.",
+                Content = "Dihentikan. Siklus: " .. AutoPnB.getCycleCount(),
                 Duration = 2
             })
         end
     end,
 })
 
--- Update status PnB secara real-time
+-- Update status real-time
 spawn(function()
     while true do
         PnBStatusLabel:Set("Status: " .. AutoPnB.getStatus())
         if AutoPnB.isRunning() then
             PnBCycleLabel:Set("Siklus: " .. AutoPnB.getCycleCount())
-            local tx, ty = AutoPnB.getTarget()
-            PnBTargetLabel:Set("Target: " .. Coordinates.formatDisplay(tx, ty))
         end
         task.wait(0.3)
     end
 end)
 
 -- ═══════════════════════════════════════
--- TAB 3: SETTINGS
+-- TAB 2: SETTINGS
 -- ═══════════════════════════════════════
 
 local TabSettings = Window:CreateTab("⚙️ Settings", 4483362458)
@@ -158,8 +124,28 @@ local TabSettings = Window:CreateTab("⚙️ Settings", 4483362458)
 local AntibanLabel = TabSettings:CreateLabel("Antiban: Aktif ✅ | Throttle: 0")
 
 TabSettings:CreateSlider({
-    Name = "Delay Siklus PnB (detik)",
-    Range = {0.1, 2.0},
+    Name = "Delay Place (detik)",
+    Range = {0.05, 2.0},
+    Increment = 0.05,
+    CurrentValue = 0.2,
+    Callback = function(value)
+        AutoPnB.DELAY_PLACE = value
+    end,
+})
+
+TabSettings:CreateSlider({
+    Name = "Delay Punch (detik)",
+    Range = {0.05, 2.0},
+    Increment = 0.05,
+    CurrentValue = 0.15,
+    Callback = function(value)
+        AutoPnB.DELAY_BREAK = value
+    end,
+})
+
+TabSettings:CreateSlider({
+    Name = "Delay Siklus (detik)",
+    Range = {0.1, 3.0},
     Increment = 0.05,
     CurrentValue = 0.3,
     Callback = function(value)
@@ -174,16 +160,6 @@ TabSettings:CreateSlider({
     CurrentValue = 8,
     Callback = function(value)
         Antiban.MAX_ACTIONS_SEC = value
-    end,
-})
-
-TabSettings:CreateSlider({
-    Name = "Min Delay Antiban (detik)",
-    Range = {0.05, 0.5},
-    Increment = 0.01,
-    CurrentValue = 0.12,
-    Callback = function(value)
-        Antiban.MIN_DELAY = value
     end,
 })
 
@@ -217,15 +193,18 @@ spawn(function()
 end)
 
 -- ═══════════════════════════════════════
--- TAB 4: INFO
+-- TAB 3: INFO
 -- ═══════════════════════════════════════
 
 local TabInfo = Window:CreateTab("ℹ️ Info", 4483362458)
 
-TabInfo:CreateLabel("WC Automation — Koziz Style")
-TabInfo:CreateLabel("Grid: floor(raw/3.5 + 0.5) + offset")
-TabInfo:CreateLabel("Offset: X=-4, Y=-10 | Range: 0-100")
+TabInfo:CreateLabel("CawScript — Auto PnB for Craft a World")
+TabInfo:CreateLabel("Game: Craft a World (Roblox)")
 TabInfo:CreateParagraph({
     Title = "Cara Pakai",
-    Content = "1. Buka tab Coordinates, nyalakan Auto-Sync\n2. Buka tab Auto PnB, aktifkan toggle\n3. Atur delay di Settings sesuai kebutuhan\n\n⚠️ Pastikan RemoteEvent sudah diganti\ndi file Modules/AutoPnB.lua!"
+    Content = "1. Set Target X dan Y (koordinat grid blok)\n2. Set Item ID (2 = Dirt Block)\n3. Aktifkan toggle Auto PnB\n4. Atur delay di Settings\n\n⚠️ Gunakan Remote Spy untuk cari Item ID lain!\n\nRemotes:\n• Place: PlayerPlaceItem\n• Punch: PlayerFist"
+})
+TabInfo:CreateParagraph({
+    Title = "Tips Anti-Ban",
+    Content = "• Jangan set delay terlalu rendah\n• Aktifkan Human Jitter\n• Max 8 aksi/detik (default)\n• Jangan AFK terlalu lama saat auto-farm"
 })
