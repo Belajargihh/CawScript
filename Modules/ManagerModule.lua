@@ -11,10 +11,14 @@ local Manager = {}
 local Antiban
 local Coordinates
 
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemoteTrash = Remotes:WaitForChild("PlayerItemTrash")
-local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
-local RemoteFist  = Remotes:WaitForChild("PlayerFist")
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+local RemoteTrash, RemotePlace, RemoteFist
+
+if Remotes then
+    RemoteTrash = Remotes:WaitForChild("PlayerItemTrash", 2)
+    RemotePlace = Remotes:WaitForChild("PlayerPlaceItem", 2)
+    RemoteFist  = Remotes:WaitForChild("PlayerFist", 2)
+end
 
 -- ═══════════════════════════════════════
 -- CONFIGURATION: AUTO DROP
@@ -41,6 +45,11 @@ Manager._collectThread     = nil
 
 local function dropLoop()
     while Manager._dropRunning do
+        if not RemoteTrash then 
+            Manager._dropRunning = false
+            warn("[Manager] Auto Drop gagal: RemoteTrash tidak ditemukan")
+            break 
+        end
         if Antiban then
             Antiban.throttle(function()
                 RemoteTrash:FireServer(Manager.DROP_ITEM_ID, tostring(Manager.DROP_AMOUNT))
@@ -67,6 +76,12 @@ local function collectLoop()
                     -- (User might need a more sophisticated 'find block' check later)
                     local tx, ty = px + dx, py + dy
                     
+                    if not RemoteFist or not RemotePlace then
+                        Manager._collectRunning = false
+                        warn("[Manager] Auto Collect gagal: Remote tidak lengkap")
+                        break
+                    end
+
                     if Antiban then
                         Antiban.throttle(function()
                             RemoteFist:FireServer(Vector2.new(tx, ty))
