@@ -1,17 +1,13 @@
 --[[
     Main.lua
-    UI Utama — Rayfield Interface (Craft a World)
+    Custom UI — 5x5 Grid Target Selector (No Rayfield)
     
-    Tab:
-    1. Auto PnB — Toggle, auto-sync, auto-detect item
-    2. Settings — Delay config, antiban
-    3. Info — Panduan penggunaan
-    
-    Cara pakai: Di-load oleh Index.lua via loadstring
+    Buka instan, tanpa loading.
+    Grid 5x5 untuk pilih target Place+Break relatif ke posisi karakter.
 ]]
 
 -- ═══════════════════════════════════════
--- LOAD DEPENDENCIES DARI GITHUB
+-- LOAD DEPENDENCIES
 -- ═══════════════════════════════════════
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
@@ -20,294 +16,460 @@ local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua"
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua"))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua"))()
 
--- Inisialisasi dependencies
-AutoPnB.init(Antiban)
+AutoPnB.init(Coordinates, Antiban)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 -- ═══════════════════════════════════════
--- AUTO-DETECT VIA PLACE (POSISI + ITEM)
+-- WARNA & STYLE
 -- ═══════════════════════════════════════
 
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
+local COLORS = {
+    bg          = Color3.fromRGB(20, 20, 30),
+    titleBar    = Color3.fromRGB(30, 30, 50),
+    cellOff     = Color3.fromRGB(40, 40, 55),
+    cellOn      = Color3.fromRGB(0, 180, 80),
+    cellPlayer  = Color3.fromRGB(50, 120, 220),
+    textWhite   = Color3.fromRGB(255, 255, 255),
+    textDim     = Color3.fromRGB(160, 160, 180),
+    btnStart    = Color3.fromRGB(0, 160, 70),
+    btnStop     = Color3.fromRGB(200, 50, 50),
+    btnNormal   = Color3.fromRGB(50, 50, 70),
+    accent      = Color3.fromRGB(100, 80, 255),
+}
 
--- Hook __namecall: saat player place manual, tangkap posisi + item ID
-local hookSuccess = false
-local placeDetected = false
-pcall(function()
-    local mt = getrawmetatable(game)
-    local oldNamecall = mt.__namecall
-    setreadonly(mt, false)
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        
-        -- Tangkap posisi + item dari PlayerPlaceItem (hanya saat bukan auto mode)
-        if method == "FireServer" and self == RemotePlace and not AutoPnB.isRunning() then
-            local args = {...}
-            if args[1] and typeof(args[1]) == "Vector2" then
-                AutoPnB.TARGET_X = args[1].X
-                AutoPnB.TARGET_Y = args[1].Y
-            end
-            if args[2] and type(args[2]) == "number" then
-                AutoPnB.ITEM_ID = args[2]
-            end
-            placeDetected = true
-        end
-        
-        return oldNamecall(self, ...)
-    end)
-    setreadonly(mt, true)
-    hookSuccess = true
+-- ═══════════════════════════════════════
+-- BUAT SCREENGUI
+-- ═══════════════════════════════════════
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "CawScriptUI"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player.PlayerGui
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 280, 0, 420)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -210)
+mainFrame.BackgroundColor3 = COLORS.bg
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
+
+-- ═══════════════════════════════════════
+-- TITLE BAR (draggable)
+-- ═══════════════════════════════════════
+
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = COLORS.titleBar
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 10)
+titleCorner.Parent = titleBar
+
+-- Fix bottom corners of title bar
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 10)
+titleFix.Position = UDim2.new(0, 0, 1, -10)
+titleFix.BackgroundColor3 = COLORS.titleBar
+titleFix.BorderSizePixel = 0
+titleFix.Parent = titleBar
+
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(1, -70, 1, 0)
+titleText.Position = UDim2.new(0, 12, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "⚒️ CawScript"
+titleText.TextColor3 = COLORS.textWhite
+titleText.TextSize = 16
+titleText.Font = Enum.Font.GothamBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
+
+-- Minimize button
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 25, 0, 25)
+minBtn.Position = UDim2.new(1, -60, 0, 5)
+minBtn.BackgroundColor3 = COLORS.btnNormal
+minBtn.Text = "_"
+minBtn.TextColor3 = COLORS.textWhite
+minBtn.TextSize = 14
+minBtn.Font = Enum.Font.GothamBold
+minBtn.BorderSizePixel = 0
+minBtn.Parent = titleBar
+Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 6)
+
+-- Close button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 5)
+closeBtn.BackgroundColor3 = COLORS.btnStop
+closeBtn.Text = "X"
+closeBtn.TextColor3 = COLORS.textWhite
+closeBtn.TextSize = 14
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BorderSizePixel = 0
+closeBtn.Parent = titleBar
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+-- Draggable
+local dragging, dragStart, startPos
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Minimize / Close
+local minimized = false
+local contentFrame -- defined below
+
+minBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if contentFrame then
+        contentFrame.Visible = not minimized
+        mainFrame.Size = minimized 
+            and UDim2.new(0, 280, 0, 35) 
+            or UDim2.new(0, 280, 0, 420)
+    end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
 end)
 
 -- ═══════════════════════════════════════
--- RAYFIELD UI
+-- CONTENT AREA
 -- ═══════════════════════════════════════
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-    Name = "CawScript | Auto PnB",
-    ConfigurationSaving = {
-        Enabled = false
-    },
-    KeySystem = false,
-})
+contentFrame = Instance.new("Frame")
+contentFrame.Name = "Content"
+contentFrame.Size = UDim2.new(1, -20, 1, -45)
+contentFrame.Position = UDim2.new(0, 10, 0, 40)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
 
 -- ═══════════════════════════════════════
--- TAB 1: AUTO PnB
+-- POSISI LABEL
 -- ═══════════════════════════════════════
 
-local TabPnB = Window:CreateTab("⚒️ Auto PnB", 4483362458)
+local posLabel = Instance.new("TextLabel")
+posLabel.Size = UDim2.new(1, 0, 0, 18)
+posLabel.Position = UDim2.new(0, 0, 0, 0)
+posLabel.BackgroundTransparency = 1
+posLabel.Text = "📍 Posisi: ..."
+posLabel.TextColor3 = COLORS.textDim
+posLabel.TextSize = 13
+posLabel.Font = Enum.Font.Gotham
+posLabel.TextXAlignment = Enum.TextXAlignment.Left
+posLabel.Parent = contentFrame
 
--- Status labels
-local PosLabel    = TabPnB:CreateLabel("📍 Posisi: belum sync")
-local TargetLabel = TabPnB:CreateLabel("🎯 Target: X=0  Y=0")
-local ItemLabel   = TabPnB:CreateLabel("🧱 Item ID: 2")
-local StatusLabel = TabPnB:CreateLabel("Status: Idle")
-local CycleLabel  = TabPnB:CreateLabel("Siklus: 0")
+-- ═══════════════════════════════════════
+-- ITEM ID
+-- ═══════════════════════════════════════
 
-if hookSuccess then
-    TabPnB:CreateLabel("✅ Place 1 blok → posisi + item otomatis ke-detect!")
-else
-    TabPnB:CreateLabel("⚠️ Hook gagal - pakai slider manual")
+local itemFrame = Instance.new("Frame")
+itemFrame.Size = UDim2.new(1, 0, 0, 28)
+itemFrame.Position = UDim2.new(0, 0, 0, 22)
+itemFrame.BackgroundTransparency = 1
+itemFrame.Parent = contentFrame
+
+local itemLabel = Instance.new("TextLabel")
+itemLabel.Size = UDim2.new(0, 80, 1, 0)
+itemLabel.BackgroundTransparency = 1
+itemLabel.Text = "🧱 Item ID:"
+itemLabel.TextColor3 = COLORS.textDim
+itemLabel.TextSize = 13
+itemLabel.Font = Enum.Font.Gotham
+itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+itemLabel.Parent = itemFrame
+
+local itemInput = Instance.new("TextBox")
+itemInput.Size = UDim2.new(0, 60, 0, 24)
+itemInput.Position = UDim2.new(0, 85, 0, 2)
+itemInput.BackgroundColor3 = COLORS.cellOff
+itemInput.Text = "2"
+itemInput.TextColor3 = COLORS.textWhite
+itemInput.TextSize = 14
+itemInput.Font = Enum.Font.GothamBold
+itemInput.BorderSizePixel = 0
+itemInput.ClearTextOnFocus = false
+itemInput.Parent = itemFrame
+Instance.new("UICorner", itemInput).CornerRadius = UDim.new(0, 6)
+
+itemInput.FocusLost:Connect(function()
+    local num = tonumber(itemInput.Text)
+    if num and num >= 1 then
+        AutoPnB.ITEM_ID = math.floor(num)
+        itemInput.Text = tostring(AutoPnB.ITEM_ID)
+    else
+        itemInput.Text = tostring(AutoPnB.ITEM_ID)
+    end
+end)
+
+-- ═══════════════════════════════════════
+-- 5x5 GRID
+-- ═══════════════════════════════════════
+
+local GRID_SIZE = 5
+local CELL_SIZE = 42
+local CELL_GAP = 4
+local gridTotalSize = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP
+
+local gridFrame = Instance.new("Frame")
+gridFrame.Name = "Grid"
+gridFrame.Size = UDim2.new(0, gridTotalSize, 0, gridTotalSize)
+gridFrame.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 58)
+gridFrame.BackgroundTransparency = 1
+gridFrame.Parent = contentFrame
+
+local gridCells = {} -- Store cell references
+
+for row = 0, GRID_SIZE - 1 do
+    for col = 0, GRID_SIZE - 1 do
+        local dx = col - 2  -- offset X: -2 to +2
+        local dy = 2 - row  -- offset Y: +2 to -2 (atas = positif)
+        local isCenter = (dx == 0 and dy == 0)
+        
+        local cell = Instance.new("TextButton")
+        cell.Name = "Cell_" .. dx .. "_" .. dy
+        cell.Size = UDim2.new(0, CELL_SIZE, 0, CELL_SIZE)
+        cell.Position = UDim2.new(0, col * (CELL_SIZE + CELL_GAP), 0, row * (CELL_SIZE + CELL_GAP))
+        cell.BorderSizePixel = 0
+        cell.TextSize = 11
+        cell.Font = Enum.Font.Gotham
+        cell.AutoButtonColor = not isCenter
+        cell.Parent = gridFrame
+        
+        Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
+        
+        if isCenter then
+            -- Player cell
+            cell.BackgroundColor3 = COLORS.cellPlayer
+            cell.Text = "ME"
+            cell.TextColor3 = COLORS.textWhite
+        else
+            -- Target cell
+            cell.BackgroundColor3 = COLORS.cellOff
+            cell.Text = ""
+            cell.TextColor3 = COLORS.textWhite
+            
+            local active = false
+            
+            cell.MouseButton1Click:Connect(function()
+                active = not active
+                if active then
+                    cell.BackgroundColor3 = COLORS.cellOn
+                    cell.Text = "✓"
+                    AutoPnB.addTarget(dx, dy)
+                else
+                    cell.BackgroundColor3 = COLORS.cellOff
+                    cell.Text = ""
+                    AutoPnB.removeTarget(dx, dy)
+                end
+            end)
+        end
+        
+        gridCells[dx .. "," .. dy] = cell
+    end
 end
 
--- Auto-sync posisi
-local autoSyncEnabled = false
+-- Grid label
+local gridLabel = Instance.new("TextLabel")
+gridLabel.Size = UDim2.new(0, gridTotalSize, 0, 16)
+gridLabel.Position = UDim2.new(0.5, -gridTotalSize / 2, 0, 58 + gridTotalSize + 4)
+gridLabel.BackgroundTransparency = 1
+gridLabel.Text = "Klik cell untuk set target PnB"
+gridLabel.TextColor3 = COLORS.textDim
+gridLabel.TextSize = 11
+gridLabel.Font = Enum.Font.Gotham
+gridLabel.Parent = contentFrame
 
-TabPnB:CreateToggle({
-    Name = "📍 Auto-Sync Posisi",
-    CurrentValue = false,
-    Callback = function(value)
-        autoSyncEnabled = value
-    end,
-})
+-- ═══════════════════════════════════════
+-- CONTROLS: START / STOP
+-- ═══════════════════════════════════════
 
--- Sync manual
-TabPnB:CreateButton({
-    Name = "🔄 Sync Posisi Sekarang",
-    Callback = function()
-        local gx, gy = Coordinates.getGridPosition()
-        if gx then
-            AutoPnB.TARGET_X = gx
-            AutoPnB.TARGET_Y = gy
-            TargetLabel:Set("🎯 Target: " .. Coordinates.formatDisplay(gx, gy))
-            Rayfield:Notify({
-                Title = "Synced!",
-                Content = "Target: " .. Coordinates.formatDisplay(gx, gy),
-                Duration = 2
-            })
-        end
-    end,
-})
+local controlY = 58 + gridTotalSize + 24
 
--- Manual target sliders
-TabPnB:CreateSlider({
-    Name = "Target Grid X (Manual)",
-    Range = {0, 200},
-    Increment = 1,
-    CurrentValue = 0,
-    Callback = function(value)
-        AutoPnB.TARGET_X = value
-        TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
-    end,
-})
+local startBtn = Instance.new("TextButton")
+startBtn.Size = UDim2.new(0.48, 0, 0, 32)
+startBtn.Position = UDim2.new(0, 0, 0, controlY)
+startBtn.BackgroundColor3 = COLORS.btnStart
+startBtn.Text = "▶  START"
+startBtn.TextColor3 = COLORS.textWhite
+startBtn.TextSize = 14
+startBtn.Font = Enum.Font.GothamBold
+startBtn.BorderSizePixel = 0
+startBtn.Parent = contentFrame
+Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 8)
 
-TabPnB:CreateSlider({
-    Name = "Target Grid Y (Manual)",
-    Range = {0, 200},
-    Increment = 1,
-    CurrentValue = 0,
-    Callback = function(value)
-        AutoPnB.TARGET_Y = value
-        TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
-    end,
-})
+local stopBtn = Instance.new("TextButton")
+stopBtn.Size = UDim2.new(0.48, 0, 0, 32)
+stopBtn.Position = UDim2.new(0.52, 0, 0, controlY)
+stopBtn.BackgroundColor3 = COLORS.btnStop
+stopBtn.Text = "■  STOP"
+stopBtn.TextColor3 = COLORS.textWhite
+stopBtn.TextSize = 14
+stopBtn.Font = Enum.Font.GothamBold
+stopBtn.BorderSizePixel = 0
+stopBtn.Parent = contentFrame
+Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
 
--- Manual item ID (fallback kalau hook gagal)
-TabPnB:CreateSlider({
-    Name = "Item ID",
-    Range = {1, 500},
-    Increment = 1,
-    CurrentValue = 2,
-    Callback = function(value)
-        AutoPnB.ITEM_ID = value
-    end,
-})
+startBtn.MouseButton1Click:Connect(function()
+    if not AutoPnB.isRunning() then
+        AutoPnB.start()
+    end
+end)
 
--- Toggle Auto PnB
-TabPnB:CreateToggle({
-    Name = "▶️ Aktifkan Auto PnB",
-    CurrentValue = false,
-    Callback = function(value)
-        if value then
-            -- Auto-sync posisi kalau belum di-set
-            if AutoPnB.TARGET_X == 0 and AutoPnB.TARGET_Y == 0 then
-                local gx, gy = Coordinates.getGridPosition()
-                if gx then
-                    AutoPnB.TARGET_X = gx
-                    AutoPnB.TARGET_Y = gy
-                    TargetLabel:Set("🎯 Target: " .. Coordinates.formatDisplay(gx, gy))
-                end
-            end
-            
-            AutoPnB.start()
-            Rayfield:Notify({
-                Title = "Auto PnB",
-                Content = "Target: X=" .. AutoPnB.TARGET_X .. " Y=" .. AutoPnB.TARGET_Y .. " | Item: " .. AutoPnB.ITEM_ID,
-                Duration = 3
-            })
-        else
-            AutoPnB.stop()
-            Rayfield:Notify({
-                Title = "Auto PnB",
-                Content = "Dihentikan. Siklus: " .. AutoPnB.getCycleCount(),
-                Duration = 2
-            })
-        end
-    end,
-})
+stopBtn.MouseButton1Click:Connect(function()
+    AutoPnB.stop()
+end)
 
--- Real-time update loop
+-- ═══════════════════════════════════════
+-- STATUS LABELS
+-- ═══════════════════════════════════════
+
+local statusY = controlY + 38
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 16)
+statusLabel.Position = UDim2.new(0, 0, 0, statusY)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Idle"
+statusLabel.TextColor3 = COLORS.textDim
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = contentFrame
+
+local cycleLabel = Instance.new("TextLabel")
+cycleLabel.Size = UDim2.new(1, 0, 0, 16)
+cycleLabel.Position = UDim2.new(0, 0, 0, statusY + 18)
+cycleLabel.BackgroundTransparency = 1
+cycleLabel.Text = "Siklus: 0 | Target: 0"
+cycleLabel.TextColor3 = COLORS.textDim
+cycleLabel.TextSize = 12
+cycleLabel.Font = Enum.Font.Gotham
+cycleLabel.TextXAlignment = Enum.TextXAlignment.Left
+cycleLabel.Parent = contentFrame
+
+-- ═══════════════════════════════════════
+-- DELAY SLIDER
+-- ═══════════════════════════════════════
+
+local delayY = statusY + 42
+
+local delayLabel = Instance.new("TextLabel")
+delayLabel.Size = UDim2.new(1, 0, 0, 16)
+delayLabel.Position = UDim2.new(0, 0, 0, delayY)
+delayLabel.BackgroundTransparency = 1
+delayLabel.Text = "Delay Siklus: 0.30s"
+delayLabel.TextColor3 = COLORS.textDim
+delayLabel.TextSize = 12
+delayLabel.Font = Enum.Font.Gotham
+delayLabel.TextXAlignment = Enum.TextXAlignment.Left
+delayLabel.Parent = contentFrame
+
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, 0, 0, 8)
+sliderBg.Position = UDim2.new(0, 0, 0, delayY + 20)
+sliderBg.BackgroundColor3 = COLORS.cellOff
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = contentFrame
+Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(0, 4)
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0.15, 0, 1, 0)  -- 0.3 out of 2.0 = 0.15
+sliderFill.BackgroundColor3 = COLORS.accent
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 4)
+
+local sliderBtn = Instance.new("TextButton")
+sliderBtn.Size = UDim2.new(1, 0, 0, 20)
+sliderBtn.Position = UDim2.new(0, 0, 0, delayY + 14)
+sliderBtn.BackgroundTransparency = 1
+sliderBtn.Text = ""
+sliderBtn.Parent = contentFrame
+
+local sliderDragging = false
+
+sliderBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        sliderDragging = true
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local relX = (input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X
+        relX = math.clamp(relX, 0, 1)
+        sliderFill.Size = UDim2.new(relX, 0, 1, 0)
+        
+        local delayVal = math.floor(relX * 200) / 100  -- 0.00 to 2.00
+        delayVal = math.max(delayVal, 0.05)
+        AutoPnB.DELAY_CYCLE = delayVal
+        delayLabel.Text = string.format("Delay Siklus: %.2fs", delayVal)
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        sliderDragging = false
+    end
+end)
+
+-- ═══════════════════════════════════════
+-- REAL-TIME UPDATE LOOP
+-- ═══════════════════════════════════════
+
 spawn(function()
-    while true do
+    while gui and gui.Parent do
         -- Update posisi
         local gx, gy = Coordinates.getGridPosition()
         if gx then
-            PosLabel:Set("📍 Posisi: " .. Coordinates.formatDisplay(gx, gy))
-            
-            if autoSyncEnabled and not AutoPnB.isRunning() then
-                AutoPnB.TARGET_X = gx
-                AutoPnB.TARGET_Y = gy
-                TargetLabel:Set("🎯 Target: " .. Coordinates.formatDisplay(gx, gy))
-            end
-        end
-        
-        -- Update dari place detection (posisi + item)
-        if placeDetected then
-            TargetLabel:Set("🎯 Target: X=" .. AutoPnB.TARGET_X .. "  Y=" .. AutoPnB.TARGET_Y)
-            ItemLabel:Set("🧱 Item ID: " .. AutoPnB.ITEM_ID)
-            placeDetected = false
+            posLabel.Text = "📍 Posisi: X=" .. gx .. "  Y=" .. gy
         end
         
         -- Update status
-        StatusLabel:Set("Status: " .. AutoPnB.getStatus())
+        statusLabel.Text = "Status: " .. AutoPnB.getStatus()
+        cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount()
+        
+        -- Update button colors based on running state
         if AutoPnB.isRunning() then
-            CycleLabel:Set("Siklus: " .. AutoPnB.getCycleCount())
+            startBtn.BackgroundColor3 = COLORS.btnNormal
+            stopBtn.BackgroundColor3 = COLORS.btnStop
+        else
+            startBtn.BackgroundColor3 = COLORS.btnStart
+            stopBtn.BackgroundColor3 = COLORS.btnNormal
         end
         
         task.wait(0.5)
     end
 end)
-
--- ═══════════════════════════════════════
--- TAB 2: SETTINGS
--- ═══════════════════════════════════════
-
-local TabSettings = Window:CreateTab("⚙️ Settings", 4483362458)
-
-local AntibanLabel = TabSettings:CreateLabel("Antiban: Aktif ✅ | Throttle: 0")
-
-TabSettings:CreateSlider({
-    Name = "Delay Place (detik)",
-    Range = {0.05, 2.0},
-    Increment = 0.05,
-    CurrentValue = 0.2,
-    Callback = function(value)
-        AutoPnB.DELAY_PLACE = value
-    end,
-})
-
-TabSettings:CreateSlider({
-    Name = "Delay Punch (detik)",
-    Range = {0.05, 2.0},
-    Increment = 0.05,
-    CurrentValue = 0.15,
-    Callback = function(value)
-        AutoPnB.DELAY_BREAK = value
-    end,
-})
-
-TabSettings:CreateSlider({
-    Name = "Delay Siklus (detik)",
-    Range = {0.1, 3.0},
-    Increment = 0.05,
-    CurrentValue = 0.3,
-    Callback = function(value)
-        AutoPnB.DELAY_CYCLE = value
-    end,
-})
-
-TabSettings:CreateSlider({
-    Name = "Max Aksi/Detik (Antiban)",
-    Range = {3, 15},
-    Increment = 1,
-    CurrentValue = 8,
-    Callback = function(value)
-        Antiban.MAX_ACTIONS_SEC = value
-    end,
-})
-
-TabSettings:CreateToggle({
-    Name = "Human Jitter (Variasi Acak)",
-    CurrentValue = true,
-    Callback = function(value)
-        Antiban.HUMAN_JITTER = value
-    end,
-})
-
-TabSettings:CreateButton({
-    Name = "🔃 Reset Antiban Counter",
-    Callback = function()
-        Antiban.resetCounter()
-        Rayfield:Notify({
-            Title = "Antiban",
-            Content = "Counter di-reset!",
-            Duration = 2
-        })
-    end,
-})
-
-spawn(function()
-    while true do
-        local status = Antiban.isPaused() and "PAUSED ⚠️" or "Aktif ✅"
-        AntibanLabel:Set("Antiban: " .. status .. " | Throttle: " .. Antiban.getThrottleCount())
-        task.wait(1)
-    end
-end)
-
--- ═══════════════════════════════════════
--- TAB 3: INFO
--- ═══════════════════════════════════════
-
-local TabInfo = Window:CreateTab("ℹ️ Info", 4483362458)
-
-TabInfo:CreateLabel("CawScript — Auto PnB for Craft a World")
-TabInfo:CreateParagraph({
-    Title = "Cara Pakai",
-    Content = "1. Place 1 blok manual → item otomatis ke-detect\n2. Nyalakan Auto-Sync → posisi otomatis update\n3. Aktifkan Auto PnB → Place + Punch loop\n\n🧱 Item auto-detect dari aksi manual kamu\n📍 Posisi auto-detect dari karakter"
-})
-TabInfo:CreateParagraph({
-    Title = "Tips Anti-Ban",
-    Content = "• Jangan set delay terlalu rendah\n• Aktifkan Human Jitter\n• Max 8 aksi/detik (default)"
-})
