@@ -55,7 +55,10 @@ local function readSlot(hotbar, slotNumber)
         return { count = 0, hasItem = false }
     end
     
-    local amountLabel = slot:FindFirstChild("AmountText")
+    -- AmountText ada di dalam ItemDisplay, bukan direct child
+    -- Pakai recursive search (arg ke-2 = true)
+    local amountLabel = slot:FindFirstChild("AmountText", true)
+    
     local count = 0
     local hasItem = false
     
