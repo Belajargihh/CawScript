@@ -725,7 +725,7 @@ local function createSection(name, height)
 end
 
 -- --- AUTO DROP SECTION ---
-local dropContent = createSection("🗑️ Auto Drop", 120)
+local dropContent = createSection("🗑️ Auto Drop", 200)
 
 local dropItemRow = Instance.new("Frame")
 dropItemRow.Size = UDim2.new(1, 0, 0, 50)
@@ -743,11 +743,28 @@ dropItemDisplay.BorderSizePixel = 0
 dropItemDisplay.Parent = dropItemRow
 Instance.new("UICorner", dropItemDisplay).CornerRadius = UDim.new(0, 5)
 
+-- Picker frame (hidden, shows items from backpack)
+local pickerFrame = Instance.new("ScrollingFrame")
+pickerFrame.Size = UDim2.new(1, 0, 0, 0)  -- starts collapsed
+pickerFrame.BackgroundColor3 = C.bg
+pickerFrame.BorderSizePixel = 0
+pickerFrame.ScrollBarThickness = 2
+pickerFrame.Visible = false
+pickerFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+pickerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+pickerFrame.Parent = dropContent
+Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 5)
+
+local pickerList = Instance.new("UIListLayout")
+pickerList.Padding = UDim.new(0, 3)
+pickerList.SortOrder = Enum.SortOrder.LayoutOrder
+pickerList.Parent = pickerFrame
+
 local dropSelectBtn = Instance.new("TextButton")
 dropSelectBtn.Size = UDim2.new(1, -60, 0, 22)
 dropSelectBtn.Position = UDim2.new(0, 60, 0, 0)
-dropSelectBtn.BackgroundColor3 = hookSuccess and C.accent or C.btnGrey
-dropSelectBtn.Text = hookSuccess and "🔍 Select Item" or "⚠️ No Hook"
+dropSelectBtn.BackgroundColor3 = C.accent
+dropSelectBtn.Text = "🎒 Scan & Pilih Item"
 dropSelectBtn.TextColor3 = C.white
 dropSelectBtn.TextSize = 11
 dropSelectBtn.Font = Enum.Font.GothamBold
@@ -756,21 +773,71 @@ dropSelectBtn.Parent = dropItemRow
 Instance.new("UICorner", dropSelectBtn).CornerRadius = UDim.new(0, 5)
 
 dropSelectBtn.MouseButton1Click:Connect(function()
-    if not hookSuccess then return end
-    if detectCallback then
-        -- Cancel selection, restore UI
-        detectCallback = nil
+    -- Toggle picker
+    if pickerFrame.Visible then
+        pickerFrame.Visible = false
+        pickerFrame.Size = UDim2.new(1, 0, 0, 0)
+        dropSelectBtn.Text = "🎒 Scan & Pilih Item"
         dropSelectBtn.BackgroundColor3 = C.accent
-        dropSelectBtn.Text = "🔍 Select Item"
-    else
-        dropSelectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
-        dropSelectBtn.Text = "⏳ Place 1 blok..."
-        detectCallback = function(id)
-            ManagerModule.captureItemImage(id)
-            dropItemDisplay.Text = tostring(id)
-            dropSelectBtn.BackgroundColor3 = C.accent
-            dropSelectBtn.Text = "🔍 Select Item"
+        return
+    end
+    
+    -- Scan backpack
+    dropSelectBtn.Text = "⏳ Scanning..."
+    BackpackSync.sync()
+    
+    -- Clear old items
+    for _, c in ipairs(pickerFrame:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    
+    -- Show items found
+    local found = 0
+    for i = 1, 16 do
+        local info = BackpackSync.getSlotInfo(i)
+        if info.hasItem and info.imageId ~= "" and info.imageId ~= "rbxassetid://0" then
+            found = found + 1
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 28)
+            btn.BackgroundColor3 = C.cellOff
+            btn.Text = "  Slot " .. i .. " — " .. info.count .. "x items"
+            btn.TextColor3 = C.white
+            btn.TextSize = 11
+            btn.Font = Enum.Font.GothamBold
+            btn.BorderSizePixel = 0
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.LayoutOrder = i
+            btn.Parent = pickerFrame
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+            
+            btn.MouseButton1Click:Connect(function()
+                -- Selected this item!
+                ManagerModule.DROP_ITEM_ID = i
+                ManagerModule.DROP_IMAGE_ID = info.imageId
+                dropItemDisplay.Text = "Slot " .. i
+                
+                -- Close picker
+                pickerFrame.Visible = false
+                pickerFrame.Size = UDim2.new(1, 0, 0, 0)
+                dropSelectBtn.Text = "✅ Slot " .. i .. " dipilih"
+                dropSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 70)
+            end)
         end
+    end
+    
+    if found == 0 then
+        dropSelectBtn.Text = "⚠️ Backpack kosong!"
+        dropSelectBtn.BackgroundColor3 = C.btnStop
+        task.wait(2)
+        dropSelectBtn.Text = "🎒 Scan & Pilih Item"
+        dropSelectBtn.BackgroundColor3 = C.accent
+    else
+        -- Show picker
+        local pickerH = math.min(found * 31, 120)
+        pickerFrame.Size = UDim2.new(1, 0, 0, pickerH)
+        pickerFrame.Visible = true
+        dropSelectBtn.Text = "❌ Tutup"
+        dropSelectBtn.BackgroundColor3 = C.btnStop
     end
 end)
 
