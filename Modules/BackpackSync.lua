@@ -1,8 +1,9 @@
 --[[
     BackpackSync.lua
-    Core Module: Sinkronisasi data inventory dari hotbar UI
+    Core Module: Sinkronisasi data inventory dari InventoryScroll
 
-    Path: PlayerGui > InventoryUI > Handle > Frame > Hotbar > ImageButton[1-16] > AmountText
+    Path: InventoryUI > Handle > (recursive) > InventoryScroll > ImageButton[1-16]
+    Per slot: AmountText (qty), ItemDisplay (image = item ID)
 ]]
 
 local BackpackSync = {}
@@ -15,16 +16,14 @@ BackpackSync._slots = {}
 BackpackSync._totalSlots = 16
 BackpackSync._lastSync = 0
 BackpackSync._syncInterval = 0.5
-BackpackSync._hotbar = nil  -- cache hotbar reference
+BackpackSync._scroll = nil  -- cached InventoryScroll reference
 
 -- ═══════════════════════════════════════
--- INTERNAL: Cari InventoryScroll (data asli ada di sini)
--- Path: InventoryUI > Handle > Frame > Bottom > Frame > InventoryFrame > InventoryScroll
+-- INTERNAL: Cari InventoryScroll (recursive, anti gagal)
 -- ═══════════════════════════════════════
-local function findInventoryScroll()
-    -- Kalau sudah di-cache dan masih valid, pakai cache
-    if BackpackSync._hotbar and BackpackSync._hotbar.Parent then
-        return BackpackSync._hotbar
+local function findScroll()
+    if BackpackSync._scroll and BackpackSync._scroll.Parent then
+        return BackpackSync._scroll
     end
     
     local ok, scroll = pcall(function()
@@ -34,20 +33,12 @@ local function findInventoryScroll()
         if not inv then return nil end
         local handle = inv:WaitForChild("Handle", 3)
         if not handle then return nil end
-        local frame = handle:WaitForChild("Frame", 3)
-        if not frame then return nil end
-        local bottom = frame:WaitForChild("Bottom", 3)
-        if not bottom then return nil end
-        local innerFrame = bottom:WaitForChild("Frame", 3)
-        if not innerFrame then return nil end
-        local invFrame = innerFrame:WaitForChild("InventoryFrame", 3)
-        if not invFrame then return nil end
-        local invScroll = invFrame:WaitForChild("InventoryScroll", 3)
-        return invScroll
+        -- Recursive search — nggak peduli path-nya gimana
+        return handle:FindFirstChild("InventoryScroll", true)
     end)
     
     if ok and scroll then
-        BackpackSync._hotbar = scroll  -- cache it
+        BackpackSync._scroll = scroll
         return scroll
     end
     return nil
@@ -56,18 +47,18 @@ end
 -- ═══════════════════════════════════════
 -- INTERNAL: Baca data dari 1 slot
 -- ═══════════════════════════════════════
-local function readSlot(hotbar, slotNumber)
-    local slot = hotbar:FindFirstChild(tostring(slotNumber))
+local function readSlot(scroll, slotNumber)
+    local slot = scroll:FindFirstChild(tostring(slotNumber))
     if not slot then
-        return { count = 0, hasItem = false }
+        return { count = 0, hasItem = false, imageId = "" }
     end
     
-    -- AmountText ada di dalam ItemDisplay, bukan direct child
-    -- Pakai recursive search (arg ke-2 = true)
     local amountLabel = slot:FindFirstChild("AmountText", true)
+    local itemDisplay = slot:FindFirstChild("ItemDisplay", true)
     
     local count = 0
     local hasItem = false
+    local imageId = ""
     
     if amountLabel then
         local text = amountLabel.Text or ""
@@ -75,22 +66,31 @@ local function readSlot(hotbar, slotNumber)
         hasItem = (count > 0)
     end
     
-    return { count = count, hasItem = hasItem }
+    if itemDisplay then
+        imageId = itemDisplay.Image or ""
+        -- Kalau ada image tapi count 0, berarti punya minimal 1
+        if imageId ~= "" and imageId ~= "rbxassetid://0" and not hasItem then
+            count = 1
+            hasItem = true
+        end
+    end
+    
+    return { count = count, hasItem = hasItem, imageId = imageId }
 end
 
 -- ═══════════════════════════════════════
 -- SYNC: Update semua slot
 -- ═══════════════════════════════════════
 function BackpackSync.sync()
-    local hotbar = findInventoryScroll()
-    if not hotbar then return false end
+    local scroll = findScroll()
+    if not scroll then return false end
     
     for i = 1, BackpackSync._totalSlots do
-        local ok, data = pcall(readSlot, hotbar, i)
+        local ok, data = pcall(readSlot, scroll, i)
         if ok then
             BackpackSync._slots[i] = data
         else
-            BackpackSync._slots[i] = { count = 0, hasItem = false }
+            BackpackSync._slots[i] = { count = 0, hasItem = false, imageId = "" }
         end
     end
     
@@ -108,6 +108,13 @@ function BackpackSync.getSlotCount(slotNumber)
     end
     local slot = BackpackSync._slots[slotNumber]
     return slot and slot.count or 0
+end
+
+function BackpackSync.getSlotInfo(slotNumber)
+    if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
+        BackpackSync.sync()
+    end
+    return BackpackSync._slots[slotNumber] or { count = 0, hasItem = false, imageId = "" }
 end
 
 function BackpackSync.getAllSlots()
