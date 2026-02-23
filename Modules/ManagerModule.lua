@@ -58,30 +58,65 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
--- POPUP NUKER: Hancurkan UI game yang ganggu
+-- POPUP NUKER & HUD PERSISTENCE
+-- Hancurkan UI game yang ganggu & paksa HUD tetep ada
 -- ═══════════════════════════════════════
-local function destroyPopups()
+
+local PERSISTENT_GUIS = {} -- Simpan mana yang harus tetep nongol
+
+local function destroyPopupsAndForceHUD()
     pcall(function()
         local pg = player:FindFirstChild("PlayerGui")
         if not pg then return end
         
         for _, g in ipairs(pg:GetChildren()) do
-            -- Abaikan UI kita sendiri
             if g:IsA("ScreenGui") and g.Name ~= "KolinUI" then
-                local found = false
-                -- Cek apakah GUI ini berisi teks drop/confirm
+                -- 1. NUKER: Hancurkan popup drop
+                local isDropUI = false
                 for _, child in ipairs(g:GetDescendants()) do
                     if child:IsA("TextLabel") or child:IsA("TextButton") then
                         local t = (child.Text or ""):lower()
                         if t:find("drop") or t:find("how many") or t:find("confirm") then
-                            found = true
+                            isDropUI = true
                             break
                         end
                     end
                 end
                 
-                if found then
+                if isDropUI then
                     g:Destroy()
+                elseif PERSISTENT_GUIS[g] then
+                    -- 2. PERSISTENCE: Paksa HUD tetep enabled
+                    if g.Enabled == false then
+                        g.Enabled = true
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Ambil snapshot state UI sekarang (mana yang lagi nongol)
+local function recordHUDState()
+    PERSISTENT_GUIS = {}
+    pcall(function()
+        local pg = player:FindFirstChild("PlayerGui")
+        if not pg then return end
+        for _, g in ipairs(pg:GetChildren()) do
+            if g:IsA("ScreenGui") and g.Name ~= "KolinUI" and g.Enabled == true then
+                -- Jangan persist popup drop itu sendiri
+                local isDropUI = false
+                for _, child in ipairs(g:GetDescendants()) do
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        local t = (child.Text or ""):lower()
+                        if t:find("drop") or t:find("how many") then
+                            isDropUI = true
+                            break
+                        end
+                    end
+                end
+                if not isDropUI then
+                    PERSISTENT_GUIS[g] = true
                 end
             end
         end
@@ -93,10 +128,13 @@ end
 -- ═══════════════════════════════════════
 
 local function dropLoop()
-    -- Start a background nuker during the loop
+    -- Record mana UI yang harusnya ada
+    recordHUDState()
+
+    -- Start a background nuker + HUD keeper during the loop
     task.spawn(function()
         while Manager._dropRunning do
-            destroyPopups()
+            destroyPopupsAndForceHUD()
             task.wait(0.05) -- Cek 20x per detik
         end
     end)
@@ -128,8 +166,8 @@ local function dropLoop()
                 RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             end)
             
-            -- Langsung hapus (sebelum sempat render / hide UI lain)
-            destroyPopups()
+            -- Langsung hapus & paksa HUD nongol
+            destroyPopupsAndForceHUD()
             
             -- 2. Kasih jeda sangat singkat agar server process PlayerDrop
             task.wait(0.05)
@@ -144,8 +182,8 @@ local function dropLoop()
                 })
             end)
             
-            -- Hapus lagi buat jaga-jaga
-            destroyPopups()
+            -- Hapus lagi & paksa HUD nongol buat jaga-jaga
+            destroyPopupsAndForceHUD()
             
         elseif not slotNum then
             Manager._dropRunning = false
