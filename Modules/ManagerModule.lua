@@ -58,37 +58,21 @@ Manager._collectThread     = nil
 
 local function dropLoop()
     while Manager._dropRunning do
-        if not RemoteDrop or not RemotePrompt then
+        if not RemotePrompt then
             Manager._dropRunning = false
-            warn("[Manager] Auto Drop gagal: Remote tidak ditemukan")
+            warn("[Manager] Auto Drop gagal: UIPromptEvent tidak ditemukan")
             break
         end
 
-        -- Fire PlayerDrop lalu LANGSUNG confirm — tanpa jeda
-        -- supaya popup nggak sempet muncul/render
+        -- SKIP PlayerDrop — langsung fire UIPromptEvent aja
+        -- Ini bypass popup sepenuhnya
         pcall(function()
-            RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             RemotePrompt:FireServer({
                 ButtonAction = "drp",
                 Inputs = {
                     amt = tostring(Manager.DROP_AMOUNT)
                 }
             })
-        end)
-
-        -- Tutup popup kalau masih muncul (cari dan destroy)
-        pcall(function()
-            local playerGui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-            if playerGui then
-                for _, gui in ipairs(playerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") and gui.Name ~= "KolinUI" then
-                        local prompt = gui:FindFirstChild("DropPrompt") or gui:FindFirstChild("Prompt")
-                        if prompt then
-                            prompt.Visible = false
-                        end
-                    end
-                end
-            end
         end)
 
         task.wait(Manager.DROP_DELAY)
