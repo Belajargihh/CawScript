@@ -1,9 +1,6 @@
 --[[
     ManagerModule.lua
-    Auto Drop & Auto Collect with Backpack Sync
-
-    Inventory path: InventoryUI > Handle > Frame > Hotbar > ImageButton[slot] > AmountText
-    Drop flow: check slot count → if count >= setting → PlayerDrop + UIPromptEvent
+    Auto Drop & Auto Collect — uses BackpackSync for inventory checking
 ]]
 
 local Manager = {}
@@ -13,9 +10,7 @@ local Manager = {}
 -- ═══════════════════════════════════════
 local Antiban
 local Coordinates
-
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local BackpackSync  -- injected via init()
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local Managers = game:GetService("ReplicatedStorage"):WaitForChild("Managers", 5)
@@ -39,7 +34,7 @@ end
 -- CONFIG: AUTO DROP
 -- ═══════════════════════════════════════
 Manager.DROP_ITEM_ID    = 1   -- slot number (1-16)
-Manager.DROP_AMOUNT     = 1   -- jumlah minimum baru drop
+Manager.DROP_AMOUNT     = 1   -- minimal jumlah sebelum drop
 Manager.DROP_DELAY      = 2
 Manager._dropRunning    = false
 Manager._dropThread     = nil
@@ -55,35 +50,8 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
--- BACKPACK SYNC: Read item count from hotbar slot
--- Path: InventoryUI > Handle > Frame > Hotbar > ImageButton[slot] > AmountText
--- ═══════════════════════════════════════
-
-function Manager.getSlotCount(slotNumber)
-    local ok, count = pcall(function()
-        local pg = player:FindFirstChild("PlayerGui")
-        if not pg then return 0 end
-        local inv = pg:FindFirstChild("InventoryUI")
-        if not inv then return 0 end
-        local handle = inv:FindFirstChild("Handle")
-        if not handle then return 0 end
-        local frame = handle:FindFirstChild("Frame")
-        if not frame then return 0 end
-        local hotbar = frame:FindFirstChild("Hotbar")
-        if not hotbar then return 0 end
-        local slot = hotbar:FindFirstChild(tostring(slotNumber))
-        if not slot then return 0 end
-        local amountLabel = slot:FindFirstChild("AmountText")
-        if not amountLabel then return 0 end
-        local text = amountLabel.Text or ""
-        return tonumber(text) or 0
-    end)
-    return ok and count or 0
-end
-
--- ═══════════════════════════════════════
 -- AUTO DROP LOOP
--- Cek jumlah dulu → baru drop kalau cukup
+-- Cek BackpackSync → drop kalau cukup
 -- ═══════════════════════════════════════
 
 local function dropLoop()
@@ -94,15 +62,17 @@ local function dropLoop()
             break
         end
 
-        -- SYNC: cek jumlah item di slot
-        local count = Manager.getSlotCount(Manager.DROP_ITEM_ID)
+        -- Cek jumlah via BackpackSync
+        local count = 0
+        if BackpackSync then
+            count = BackpackSync.getSlotCount(Manager.DROP_ITEM_ID)
+        end
 
         if count >= Manager.DROP_AMOUNT then
-            -- Jumlah cukup → drop!
+            -- Cukup → drop!
             pcall(function()
                 RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             end)
-            -- Langsung confirm biar skip popup
             pcall(function()
                 RemotePrompt:FireServer({
                     ButtonAction = "drp",
@@ -112,7 +82,6 @@ local function dropLoop()
                 })
             end)
         end
-        -- Kalau count < DROP_AMOUNT → skip, tunggu, cek lagi
 
         task.wait(Manager.DROP_DELAY)
     end
@@ -151,9 +120,10 @@ end
 -- PUBLIC API
 -- ═══════════════════════════════════════
 
-function Manager.init(coords, antiban)
+function Manager.init(coords, antiban, bpSync)
     Coordinates = coords
     Antiban = antiban
+    BackpackSync = bpSync
 end
 
 function Manager.startDrop()

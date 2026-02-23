@@ -17,15 +17,16 @@ local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/mai
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 
 print("[CawScript] Memulai load dependencies...")
-local AutoPnB     = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
+local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua" .. NOCACHE))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua" .. NOCACHE))()
+local BackpackSync = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/BackpackSync.lua" .. NOCACHE))()
 
 print("[CawScript] Initializing modules...")
 AutoPnB.init(Coordinates, Antiban)
 
 local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
-ManagerModule.init(Coordinates, Antiban)
+ManagerModule.init(Coordinates, Antiban, BackpackSync)
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -410,7 +411,20 @@ posLabel.TextColor3 = C.dim
 posLabel.TextSize = 12
 posLabel.Font = Enum.Font.Gotham
 posLabel.TextXAlignment = Enum.TextXAlignment.Left
+posLabel.Position = UDim2.new(0, 0, 0, 0)
 posLabel.Parent = tabPnB
+
+-- Backpack info label
+local bpLabel = Instance.new("TextLabel")
+bpLabel.Size = UDim2.new(1, 0, 0, 16)
+bpLabel.BackgroundTransparency = 1
+bpLabel.Text = "🎒 Backpack: ..."
+bpLabel.TextColor3 = C.dim
+bpLabel.TextSize = 12
+bpLabel.Font = Enum.Font.Gotham
+bpLabel.TextXAlignment = Enum.TextXAlignment.Left
+bpLabel.Position = UDim2.new(0, 0, 0, 16)
+bpLabel.Parent = tabPnB
 
 -- Item ID display + Select button
 local itemRow = Instance.new("Frame")
@@ -1001,6 +1015,11 @@ spawn(function()
         local gx, gy = Coordinates.getGridPosition()
         if gx then
             posLabel.Text = "📍 Posisi: X=" .. gx .. "  Y=" .. gy
+        end
+        
+        -- Update backpack info
+        if BackpackSync then
+            bpLabel.Text = BackpackSync.getSummary()
         end
         
         -- Update PnB Tab
