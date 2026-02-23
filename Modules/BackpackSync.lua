@@ -33,22 +33,15 @@ local function readSlot(hotbar, slotNumber)
     end
     
     local amountLabel = slot:FindFirstChild("AmountText")
-    local itemDisplay = slot:FindFirstChild("ItemDisplay")
     
     local count = 0
-    if amountLabel then
-        count = tonumber(amountLabel.Text) or 0
-    end
-    
-    -- Cek apakah slot ada item (dari ItemDisplay visibility/image)
     local hasItem = false
-    if itemDisplay then
-        hasItem = (itemDisplay.Image ~= nil and itemDisplay.Image ~= "")
-    end
     
-    -- Kalau count = 0 tapi ada image, berarti punya 1 item
-    if hasItem and count == 0 then
-        count = 1
+    if amountLabel then
+        local text = amountLabel.Text or ""
+        count = tonumber(text) or 0
+        -- Slot punya item kalau AmountText ada angka > 0
+        hasItem = (count > 0)
     end
     
     return { count = count, hasItem = hasItem }

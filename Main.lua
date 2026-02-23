@@ -429,7 +429,7 @@ bpLabel.Parent = tabPnB
 -- Item ID display + Select button
 local itemRow = Instance.new("Frame")
 itemRow.Size = UDim2.new(1, 0, 0, 55)
-itemRow.Position = UDim2.new(0, 0, 0, 20)
+itemRow.Position = UDim2.new(0, 0, 0, 36)
 itemRow.BackgroundTransparency = 1
 itemRow.Parent = tabPnB
 
