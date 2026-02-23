@@ -1,8 +1,10 @@
 --[[
     ManagerModule.lua
-    Auto Drop & Auto Collect — Smart drop, NO popup
+    Auto Drop & Auto Collect — Smart drop with Popup Nuker
 
-    Key: Skip PlayerDrop (causes popup), langsung fire UIPromptEvent confirm
+    Features:
+    - Silent Drop (fires PlayerDrop then UIPromptEvent)
+    - Popup Nuker (actively destroys game's confirmation UI)
 ]]
 
 local Manager = {}
@@ -56,16 +58,53 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
+-- POPUP NUKER: Hancurkan UI game yang ganggu
+-- ═══════════════════════════════════════
+local function destroyPopups()
+    pcall(function()
+        local pg = player:FindFirstChild("PlayerGui")
+        if not pg then return end
+        
+        for _, g in ipairs(pg:GetChildren()) do
+            -- Abaikan UI kita sendiri
+            if g:IsA("ScreenGui") and g.Name ~= "KolinUI" then
+                local found = false
+                -- Cek apakah GUI ini berisi teks drop/confirm
+                for _, child in ipairs(g:GetDescendants()) do
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        local t = (child.Text or ""):lower()
+                        if t:find("drop") or t:find("how many") or t:find("confirm") then
+                            found = true
+                            break
+                        end
+                    end
+                end
+                
+                if found then
+                    g:Destroy()
+                end
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════
 -- SMART AUTO DROP LOOP
--- Skip PlayerDrop → langsung UIPromptEvent confirm
--- No popup, no UI hide
 -- ═══════════════════════════════════════
 
 local function dropLoop()
+    -- Start a background nuker during the loop
+    task.spawn(function()
+        while Manager._dropRunning do
+            destroyPopups()
+            task.wait(0.05) -- Cek 20x per detik
+        end
+    end)
+
     while Manager._dropRunning do
-        if not RemotePrompt then
+        if not RemotePrompt or not RemoteDrop then
             Manager._dropRunning = false
-            warn("[Manager] Auto Drop gagal: UIPromptEvent tidak ditemukan")
+            warn("[Manager] Auto Drop gagal: Remote tidak ditemukan")
             break
         end
 
@@ -82,16 +121,20 @@ local function dropLoop()
         end
 
         if slotNum and count >= Manager.DROP_AMOUNT then
-            -- Item ditemukan & jumlah cukup → LANGSUNG CONFIRM (skip popup!)
-            -- Fire PlayerDrop dulu biar server siap
+            -- Item ditemukan & jumlah cukup
+            
+            -- 1. Fire PlayerDrop biar server siap (ini munculin popup di game)
             pcall(function()
                 RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             end)
             
-            -- Kasih jeda sangat singkat agar server process PlayerDrop
+            -- Langsung hapus (sebelum sempat render / hide UI lain)
+            destroyPopups()
+            
+            -- 2. Kasih jeda sangat singkat agar server process PlayerDrop
             task.wait(0.05)
             
-            -- Fire confirm
+            -- 3. Fire confirm (ini harusnya nutup popup juga secara logic server)
             pcall(function()
                 RemotePrompt:FireServer({
                     ButtonAction = "drp",
@@ -100,6 +143,10 @@ local function dropLoop()
                     }
                 })
             end)
+            
+            -- Hapus lagi buat jaga-jaga
+            destroyPopups()
+            
         elseif not slotNum then
             Manager._dropRunning = false
             warn("[Manager] Auto Drop berhenti: Item habis / tidak ditemukan")
@@ -115,12 +162,9 @@ end
 -- ═══════════════════════════════════════
 function Manager.captureItemImage(itemId)
     Manager.DROP_ITEM_ID = itemId
-    
     if not BackpackSync then return end
-    
     task.wait(0.3)
     BackpackSync.sync()
-    
     local slots = BackpackSync.findSlotsWithItems()
     if #slots > 0 then
         local info = BackpackSync.getSlotInfo(slots[1])
