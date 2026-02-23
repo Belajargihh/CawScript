@@ -462,31 +462,97 @@ selectBtn.BorderSizePixel = 0
 selectBtn.TextSize = 12
 selectBtn.Font = Enum.Font.GothamBold
 selectBtn.TextColor3 = C.white
+selectBtn.BackgroundColor3 = C.accent
+selectBtn.Text = "🎒 Pilih Item dari Backpack"
 selectBtn.Parent = itemRow
 Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
 
-if hookSuccess then
-    selectBtn.BackgroundColor3 = C.accent
-    selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
-else
-    selectBtn.BackgroundColor3 = C.cellOff
-    selectBtn.Text = "⚠️ Hook gagal"
-end
+-- PnB Picker Frame
+local bpPickerPnB = Instance.new("ScrollingFrame")
+bpPickerPnB.Size = UDim2.new(1, 0, 0, 0)
+bpPickerPnB.Position = UDim2.new(0, 0, 0, 91) -- Di bawah selectBtn
+bpPickerPnB.BackgroundColor3 = C.sidebar
+bpPickerPnB.BorderSizePixel = 0
+bpPickerPnB.ScrollBarThickness = 2
+bpPickerPnB.Visible = false
+bpPickerPnB.ZIndex = 50
+bpPickerPnB.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bpPickerPnB.CanvasSize = UDim2.new(0, 0, 0, 0)
+bpPickerPnB.Parent = tabPnB
+Instance.new("UICorner", bpPickerPnB).CornerRadius = UDim.new(0, 5)
+
+local bpPickerListPnB = Instance.new("UIListLayout")
+bpPickerListPnB.Padding = UDim.new(0, 3)
+bpPickerListPnB.SortOrder = Enum.SortOrder.LayoutOrder
+bpPickerListPnB.Parent = bpPickerPnB
 
 selectBtn.MouseButton1Click:Connect(function()
-    if not hookSuccess then return end
-    if detectCallback then
-        detectCallback = nil
+    -- Toggle picker
+    if bpPickerPnB.Visible then
+        bpPickerPnB.Visible = false
+        bpPickerPnB.Size = UDim2.new(1, 0, 0, 0)
+        selectBtn.Text = "🎒 Pilih Item dari Backpack"
         selectBtn.BackgroundColor3 = C.accent
-        selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
-    else
-        selectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
-        selectBtn.Text = "⏳ Menunggu... Place 1 blok sekarang!"
-        detectCallback = function(id)
-            AutoPnB.ITEM_ID = id
-            selectBtn.BackgroundColor3 = C.accent
-            selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
+        return
+    end
+    
+    -- Scan backpack
+    selectBtn.Text = "⏳ Scanning..."
+    BackpackSync.sync()
+    
+    -- Clear old items
+    for _, c in ipairs(bpPickerPnB:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    
+    -- Show items found
+    local found = 0
+    for i = 1, 16 do
+        local info = BackpackSync.getSlotInfo(i)
+        if info.hasItem and info.imageId ~= "" and info.imageId ~= "rbxassetid://0" then
+            found = found + 1
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -6, 0, 28)
+            btn.Position = UDim2.new(0, 3, 0, 0)
+            btn.BackgroundColor3 = C.cellOff
+            btn.Text = "  Slot " .. i .. " — " .. info.count .. "x items"
+            btn.TextColor3 = C.white
+            btn.TextSize = 11
+            btn.Font = Enum.Font.GothamBold
+            btn.BorderSizePixel = 0
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.LayoutOrder = i
+            btn.ZIndex = 51
+            btn.Parent = bpPickerPnB
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+            
+            btn.MouseButton1Click:Connect(function()
+                -- Selected this item!
+                AutoPnB.ITEM_ID = i
+                itemDisplay.Text = tostring(i)
+                
+                -- Close picker
+                bpPickerPnB.Visible = false
+                bpPickerPnB.Size = UDim2.new(1, 0, 0, 0)
+                selectBtn.Text = "✅ Slot " .. i .. " dipilih"
+                selectBtn.BackgroundColor3 = Color3.fromRGB(0, 160, 70)
+            end)
         end
+    end
+    
+    if found == 0 then
+        selectBtn.Text = "⚠️ Backpack kosong!"
+        selectBtn.BackgroundColor3 = C.btnStop
+        task.wait(2)
+        selectBtn.Text = "🎒 Pilih Item dari Backpack"
+        selectBtn.BackgroundColor3 = C.accent
+    else
+        -- Show picker
+        local pickerH = math.min(found * 31, 155)
+        bpPickerPnB.Size = UDim2.new(1, 0, 0, pickerH)
+        bpPickerPnB.Visible = true
+        selectBtn.Text = "❌ Tutup"
+        selectBtn.BackgroundColor3 = C.btnStop
     end
 end)
 
@@ -696,12 +762,13 @@ managerList.Padding = UDim.new(0, 10)
 managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Parent = tabManager
 
-local function createSection(name, height)
+local function createSection(name)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, height)
+    frame.Size = UDim2.new(1, -10, 0, 0) -- Height handled by AutomaticSize
     frame.BackgroundColor3 = C.sidebar
     frame.BorderSizePixel = 0
     frame.Parent = tabManager
+    frame.AutomaticSize = Enum.AutomaticSize.Y
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     
     local title = Instance.new("TextLabel")
@@ -716,19 +783,31 @@ local function createSection(name, height)
     title.Parent = frame
     
     local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, -20, 1, -28)
+    content.Size = UDim2.new(1, -20, 0, 0)
     content.Position = UDim2.new(0, 10, 0, 24)
     content.BackgroundTransparency = 1
     content.Parent = frame
+    content.AutomaticSize = Enum.AutomaticSize.Y
+    
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 8)
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    list.Parent = content
+    
+    -- Padding for bottom
+    local pad = Instance.new("UIPadding")
+    pad.PaddingBottom = UDim.new(0, 10)
+    pad.Parent = content
     
     return content
 end
 
 -- --- AUTO DROP SECTION ---
-local dropContent = createSection("🗑️ Auto Drop", 200)
+-- --- AUTO DROP SECTION ---
+local dropContent = createSection("🗑️ Auto Drop")
 
 local dropItemRow = Instance.new("Frame")
-dropItemRow.Size = UDim2.new(1, 0, 0, 50)
+dropItemRow.Size = UDim2.new(1, 0, 0, 24)
 dropItemRow.BackgroundTransparency = 1
 dropItemRow.Parent = dropContent
 
@@ -743,23 +822,6 @@ dropItemDisplay.BorderSizePixel = 0
 dropItemDisplay.Parent = dropItemRow
 Instance.new("UICorner", dropItemDisplay).CornerRadius = UDim.new(0, 5)
 
--- Picker frame (hidden, shows items from backpack)
-local pickerFrame = Instance.new("ScrollingFrame")
-pickerFrame.Size = UDim2.new(1, 0, 0, 0)  -- starts collapsed
-pickerFrame.BackgroundColor3 = C.bg
-pickerFrame.BorderSizePixel = 0
-pickerFrame.ScrollBarThickness = 2
-pickerFrame.Visible = false
-pickerFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-pickerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-pickerFrame.Parent = dropContent
-Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 5)
-
-local pickerList = Instance.new("UIListLayout")
-pickerList.Padding = UDim.new(0, 3)
-pickerList.SortOrder = Enum.SortOrder.LayoutOrder
-pickerList.Parent = pickerFrame
-
 local dropSelectBtn = Instance.new("TextButton")
 dropSelectBtn.Size = UDim2.new(1, -60, 0, 22)
 dropSelectBtn.Position = UDim2.new(0, 60, 0, 0)
@@ -771,6 +833,24 @@ dropSelectBtn.Font = Enum.Font.GothamBold
 dropSelectBtn.BorderSizePixel = 0
 dropSelectBtn.Parent = dropItemRow
 Instance.new("UICorner", dropSelectBtn).CornerRadius = UDim.new(0, 5)
+
+-- Picker frame (hidden, shows items from backpack)
+local pickerFrame = Instance.new("ScrollingFrame")
+pickerFrame.Size = UDim2.new(1, 0, 0, 0)  -- starts collapsed
+pickerFrame.BackgroundColor3 = C.sidebar
+pickerFrame.BorderSizePixel = 0
+pickerFrame.ScrollBarThickness = 2
+pickerFrame.Visible = false
+pickerFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+pickerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+pickerFrame.Parent = dropContent
+Instance.new("UICorner", pickerFrame).CornerRadius = UDim.new(0, 5)
+pickerFrame.LayoutOrder = 10
+
+local pickerList = Instance.new("UIListLayout")
+pickerList.Padding = UDim.new(0, 3)
+pickerList.SortOrder = Enum.SortOrder.LayoutOrder
+pickerList.Parent = pickerFrame
 
 dropSelectBtn.MouseButton1Click:Connect(function()
     -- Toggle picker
@@ -798,7 +878,8 @@ dropSelectBtn.MouseButton1Click:Connect(function()
         if info.hasItem and info.imageId ~= "" and info.imageId ~= "rbxassetid://0" then
             found = found + 1
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 28)
+            btn.Size = UDim2.new(1, -6, 0, 28)
+            btn.Position = UDim2.new(0, 3, 0, 0)
             btn.BackgroundColor3 = C.cellOff
             btn.Text = "  Slot " .. i .. " — " .. info.count .. "x items"
             btn.TextColor3 = C.white
@@ -842,23 +923,28 @@ dropSelectBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Amount Slider
+local amtRow = Instance.new("Frame")
+amtRow.Size = UDim2.new(1, 0, 0, 36)
+amtRow.BackgroundTransparency = 1
+amtRow.Parent = dropContent
+
 local amtLabel = Instance.new("TextLabel")
 amtLabel.Size = UDim2.new(1, 0, 0, 20)
-amtLabel.Position = UDim2.new(0, 0, 0, 28)
+amtLabel.Position = UDim2.new(0, 0, 0, 0)
 amtLabel.BackgroundTransparency = 1
 amtLabel.Text = "Jumlah Drop: 1"
 amtLabel.TextColor3 = C.dim
 amtLabel.TextSize = 11
 amtLabel.Font = Enum.Font.Gotham
 amtLabel.TextXAlignment = Enum.TextXAlignment.Left
-amtLabel.Parent = dropItemRow
+amtLabel.Parent = amtRow
 
 local amtSliderBg = Instance.new("Frame")
 amtSliderBg.Size = UDim2.new(1, 0, 0, 6)
-amtSliderBg.Position = UDim2.new(0, 0, 0, 48)
+amtSliderBg.Position = UDim2.new(0, 0, 0, 22)
 amtSliderBg.BackgroundColor3 = C.cellOff
 amtSliderBg.BorderSizePixel = 0
-amtSliderBg.Parent = dropItemRow
+amtSliderBg.Parent = amtRow
 Instance.new("UICorner", amtSliderBg).CornerRadius = UDim.new(0, 3)
 
 local amtSliderFill = Instance.new("Frame")
