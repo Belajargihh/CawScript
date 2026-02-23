@@ -124,9 +124,10 @@ local C = {
 -- ═══════════════════════════════════════
 
 local gui = Instance.new("ScreenGui")
-gui.Name = "CawScriptUI"
+gui.Name = "KolinUI"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 999  -- Selalu di atas popup game
 gui.Parent = player.PlayerGui
 
 -- ═══════════════════════════════════════
