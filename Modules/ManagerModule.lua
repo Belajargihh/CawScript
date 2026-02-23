@@ -1,9 +1,9 @@
 --[[
     ManagerModule.lua
-    Module: Manager Features — Auto Drop & Auto Collect
+    Auto Drop & Auto Collect with Backpack Sync
 
-    Auto Drop: fire PlayerDrop → immediately confirm via UIPromptEvent
-    → then destroy the popup GUI so it doesn't show
+    Inventory path: InventoryUI > Handle > Frame > Hotbar > ImageButton[slot] > AmountText
+    Drop flow: check slot count → if count >= setting → PlayerDrop + UIPromptEvent
 ]]
 
 local Manager = {}
@@ -38,8 +38,8 @@ end
 -- ═══════════════════════════════════════
 -- CONFIG: AUTO DROP
 -- ═══════════════════════════════════════
-Manager.DROP_ITEM_ID    = 1
-Manager.DROP_AMOUNT     = 1
+Manager.DROP_ITEM_ID    = 1   -- slot number (1-16)
+Manager.DROP_AMOUNT     = 1   -- jumlah minimum baru drop
 Manager.DROP_DELAY      = 2
 Manager._dropRunning    = false
 Manager._dropThread     = nil
@@ -55,32 +55,35 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
--- HELPER: Destroy popup from PlayerGui
+-- BACKPACK SYNC: Read item count from hotbar slot
+-- Path: InventoryUI > Handle > Frame > Hotbar > ImageButton[slot] > AmountText
 -- ═══════════════════════════════════════
-local function destroyPopup()
-    pcall(function()
+
+function Manager.getSlotCount(slotNumber)
+    local ok, count = pcall(function()
         local pg = player:FindFirstChild("PlayerGui")
-        if not pg then return end
-        for _, g in ipairs(pg:GetChildren()) do
-            if g:IsA("ScreenGui") and g.Name ~= "KolinUI" then
-                -- Cari frame popup drop
-                for _, child in ipairs(g:GetDescendants()) do
-                    if child:IsA("TextLabel") then
-                        local txt = child.Text or ""
-                        if txt:find("Drop") and txt:find("?") then
-                            -- Ini popup drop, destroy parent ScreenGui-nya
-                            g:Destroy()
-                            return
-                        end
-                    end
-                end
-            end
-        end
+        if not pg then return 0 end
+        local inv = pg:FindFirstChild("InventoryUI")
+        if not inv then return 0 end
+        local handle = inv:FindFirstChild("Handle")
+        if not handle then return 0 end
+        local frame = handle:FindFirstChild("Frame")
+        if not frame then return 0 end
+        local hotbar = frame:FindFirstChild("Hotbar")
+        if not hotbar then return 0 end
+        local slot = hotbar:FindFirstChild(tostring(slotNumber))
+        if not slot then return 0 end
+        local amountLabel = slot:FindFirstChild("AmountText")
+        if not amountLabel then return 0 end
+        local text = amountLabel.Text or ""
+        return tonumber(text) or 0
     end)
+    return ok and count or 0
 end
 
 -- ═══════════════════════════════════════
 -- AUTO DROP LOOP
+-- Cek jumlah dulu → baru drop kalau cukup
 -- ═══════════════════════════════════════
 
 local function dropLoop()
@@ -91,25 +94,25 @@ local function dropLoop()
             break
         end
 
-        -- Step 1: Fire PlayerDrop (server perlu ini buat tau item mana)
-        pcall(function()
-            RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
-        end)
-        
-        -- Step 2: LANGSUNG confirm (tanpa nunggu popup render)
-        pcall(function()
-            RemotePrompt:FireServer({
-                ButtonAction = "drp",
-                Inputs = {
-                    amt = tostring(Manager.DROP_AMOUNT)
-                }
-            })
-        end)
-        
-        -- Step 3: Destroy popup kalau masih sempet muncul
-        destroyPopup()
-        task.wait(0.1)
-        destroyPopup()  -- double kill
+        -- SYNC: cek jumlah item di slot
+        local count = Manager.getSlotCount(Manager.DROP_ITEM_ID)
+
+        if count >= Manager.DROP_AMOUNT then
+            -- Jumlah cukup → drop!
+            pcall(function()
+                RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
+            end)
+            -- Langsung confirm biar skip popup
+            pcall(function()
+                RemotePrompt:FireServer({
+                    ButtonAction = "drp",
+                    Inputs = {
+                        amt = tostring(Manager.DROP_AMOUNT)
+                    }
+                })
+            end)
+        end
+        -- Kalau count < DROP_AMOUNT → skip, tunggu, cek lagi
 
         task.wait(Manager.DROP_DELAY)
     end
