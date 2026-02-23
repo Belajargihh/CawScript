@@ -501,7 +501,7 @@ local gridTotal = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP
 
 local gridFrame = Instance.new("Frame")
 gridFrame.Size = UDim2.new(0, gridTotal, 0, gridTotal)
-gridFrame.Position = UDim2.new(0.5, -gridTotal / 2, 0, 82)
+gridFrame.Position = UDim2.new(0.5, -gridTotal / 2, 0, 98)
 gridFrame.BackgroundTransparency = 1
 gridFrame.Parent = tabPnB
 
@@ -550,7 +550,7 @@ end
 -- Grid hint
 local gridHint = Instance.new("TextLabel")
 gridHint.Size = UDim2.new(1, 0, 0, 14)
-gridHint.Position = UDim2.new(0, 0, 0, 82 + gridTotal + 3)
+gridHint.Position = UDim2.new(0, 0, 0, 98 + gridTotal + 3)
 gridHint.BackgroundTransparency = 1
 gridHint.Text = "Klik cell = target PnB"
 gridHint.TextColor3 = C.dim
@@ -562,7 +562,7 @@ gridHint.Parent = tabPnB
 -- CONTROLS
 -- ═══════════════════════════════════════
 
-local ctrlY = 82 + gridTotal + 22
+local ctrlY = 98 + gridTotal + 22
 
 local startBtn = Instance.new("TextButton")
 startBtn.Size = UDim2.new(0.48, 0, 0, 28)

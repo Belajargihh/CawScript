@@ -2,13 +2,7 @@
     BackpackSync.lua
     Core Module: Sinkronisasi data inventory dari hotbar UI
 
-    Path: InventoryUI > Handle > Frame > Hotbar > ImageButton[1-16] > AmountText
-    
-    Usage:
-        BackpackSync.getSlotCount(1)         → 84
-        BackpackSync.getAllSlots()            → {[1]={count=84,hasItem=true}, ...}
-        BackpackSync.getTotalItems()         → total semua item
-        BackpackSync.findSlotsWithItems()    → {1, 2, 3} (slot yg ada item)
+    Path: PlayerGui > InventoryUI > Handle > Frame > Hotbar > ImageButton[1-16] > AmountText
 ]]
 
 local BackpackSync = {}
@@ -16,12 +10,41 @@ local BackpackSync = {}
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Cache data
-BackpackSync._slots = {}     -- {[slotNum] = {count=N, hasItem=bool}}
+-- Cache
+BackpackSync._slots = {}
 BackpackSync._totalSlots = 16
 BackpackSync._lastSync = 0
-BackpackSync._syncInterval = 0.5  -- sync setiap 0.5 detik
-BackpackSync._running = false
+BackpackSync._syncInterval = 0.5
+BackpackSync._hotbar = nil  -- cache hotbar reference
+
+-- ═══════════════════════════════════════
+-- INTERNAL: Cari Hotbar (with WaitForChild)
+-- ═══════════════════════════════════════
+local function findHotbar()
+    -- Kalau sudah di-cache dan masih valid, pakai cache
+    if BackpackSync._hotbar and BackpackSync._hotbar.Parent then
+        return BackpackSync._hotbar
+    end
+    
+    local ok, hotbar = pcall(function()
+        local pg = player:WaitForChild("PlayerGui", 3)
+        if not pg then return nil end
+        local inv = pg:WaitForChild("InventoryUI", 3)
+        if not inv then return nil end
+        local handle = inv:WaitForChild("Handle", 3)
+        if not handle then return nil end
+        local frame = handle:WaitForChild("Frame", 3)
+        if not frame then return nil end
+        local hb = frame:WaitForChild("Hotbar", 3)
+        return hb
+    end)
+    
+    if ok and hotbar then
+        BackpackSync._hotbar = hotbar
+        return hotbar
+    end
+    return nil
+end
 
 -- ═══════════════════════════════════════
 -- INTERNAL: Baca data dari 1 slot
@@ -33,14 +56,12 @@ local function readSlot(hotbar, slotNumber)
     end
     
     local amountLabel = slot:FindFirstChild("AmountText")
-    
     local count = 0
     local hasItem = false
     
     if amountLabel then
         local text = amountLabel.Text or ""
         count = tonumber(text) or 0
-        -- Slot punya item kalau AmountText ada angka > 0
         hasItem = (count > 0)
     end
     
@@ -48,26 +69,10 @@ local function readSlot(hotbar, slotNumber)
 end
 
 -- ═══════════════════════════════════════
--- INTERNAL: Cari Hotbar frame
--- ═══════════════════════════════════════
-local function getHotbar()
-    local pg = player:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    local inv = pg:FindFirstChild("InventoryUI")
-    if not inv then return nil end
-    local handle = inv:FindFirstChild("Handle")
-    if not handle then return nil end
-    local frame = handle:FindFirstChild("Frame")
-    if not frame then return nil end
-    local hotbar = frame:FindFirstChild("Hotbar")
-    return hotbar
-end
-
--- ═══════════════════════════════════════
--- SYNC: Update semua slot data
+-- SYNC: Update semua slot
 -- ═══════════════════════════════════════
 function BackpackSync.sync()
-    local hotbar = getHotbar()
+    local hotbar = findHotbar()
     if not hotbar then return false end
     
     for i = 1, BackpackSync._totalSlots do
@@ -87,9 +92,7 @@ end
 -- PUBLIC API
 -- ═══════════════════════════════════════
 
--- Ambil jumlah item di slot tertentu
 function BackpackSync.getSlotCount(slotNumber)
-    -- Auto sync kalau data sudah stale
     if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
         BackpackSync.sync()
     end
@@ -97,7 +100,6 @@ function BackpackSync.getSlotCount(slotNumber)
     return slot and slot.count or 0
 end
 
--- Ambil data semua 16 slot
 function BackpackSync.getAllSlots()
     if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
         BackpackSync.sync()
@@ -105,7 +107,6 @@ function BackpackSync.getAllSlots()
     return BackpackSync._slots
 end
 
--- Total semua item di inventory
 function BackpackSync.getTotalItems()
     if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
         BackpackSync.sync()
@@ -117,7 +118,6 @@ function BackpackSync.getTotalItems()
     return total
 end
 
--- Cari slot yang ada item-nya
 function BackpackSync.findSlotsWithItems()
     if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
         BackpackSync.sync()
@@ -132,12 +132,10 @@ function BackpackSync.findSlotsWithItems()
     return found
 end
 
--- Cek apakah slot punya cukup item
 function BackpackSync.hasEnough(slotNumber, amount)
     return BackpackSync.getSlotCount(slotNumber) >= amount
 end
 
--- Info ringkas untuk UI
 function BackpackSync.getSummary()
     if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
         BackpackSync.sync()
@@ -154,7 +152,14 @@ function BackpackSync.getSummary()
     return string.format("🎒 %d/%d slot | %d items", used, BackpackSync._totalSlots, total)
 end
 
--- Initial sync
-BackpackSync.sync()
+-- Initial sync (retry sampai ketemu)
+task.spawn(function()
+    for attempt = 1, 10 do
+        if BackpackSync.sync() then
+            break
+        end
+        task.wait(1)
+    end
+end)
 
 return BackpackSync
