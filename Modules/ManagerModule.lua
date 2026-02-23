@@ -1,11 +1,11 @@
 --[[
     ManagerModule.lua
-    Auto Drop & Auto Collect — Smart drop with image-based item matching
+    Auto Drop & Auto Collect — Smart drop with popup destruction
 
     Flow:
     1. User selects item → captures itemId + imageId
-    2. Drop loop: findSlotByImage → check count → drop or skip
-    3. No blind looping anymore!
+    2. Drop loop: findSlotByImage → check count → drop + destroy popup
+    3. No blind looping, auto-stop when item gone
 ]]
 
 local Manager = {}
@@ -16,6 +16,9 @@ local Manager = {}
 local Antiban
 local Coordinates
 local BackpackSync  -- injected via init()
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local Managers = game:GetService("ReplicatedStorage"):WaitForChild("Managers", 5)
@@ -56,13 +59,46 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
+-- POPUP DESTROYER: Hapus popup drop yang muncul
+-- ═══════════════════════════════════════
+local function destroyAllPopups()
+    pcall(function()
+        local pg = player:FindFirstChild("PlayerGui")
+        if not pg then return end
+        for _, g in ipairs(pg:GetChildren()) do
+            if g:IsA("ScreenGui") and g.Name ~= "KolinUI" then
+                for _, child in ipairs(g:GetDescendants()) do
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        local txt = (child.Text or ""):lower()
+                        if txt:find("drop") or txt:find("confirm") or txt:find("how many") then
+                            g:Destroy()
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Popup watcher: selama auto drop aktif, terus destroy popup
+local function startPopupWatcher()
+    task.spawn(function()
+        while Manager._dropRunning do
+            destroyAllPopups()
+            task.wait(0.05)  -- check 20x per detik
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════
 -- SMART AUTO DROP LOOP
--- 1. Cari slot dengan image yang sama
--- 2. Cek count >= DROP_AMOUNT
--- 3. Drop kalau cukup, skip kalau nggak
 -- ═══════════════════════════════════════
 
 local function dropLoop()
+    -- Start popup watcher
+    startPopupWatcher()
+    
     while Manager._dropRunning do
         if not RemoteDrop or not RemotePrompt then
             Manager._dropRunning = false
@@ -70,15 +106,14 @@ local function dropLoop()
             break
         end
 
-        -- Image ID harus ada (user harus select item dulu)
         if Manager.DROP_IMAGE_ID == "" then
             Manager._dropRunning = false
-            warn("[Manager] Auto Drop gagal: Item belum dipilih (image kosong)")
+            warn("[Manager] Auto Drop gagal: Item belum dipilih")
             break
         end
 
         -- SYNC: cari slot yang punya item dengan image yang sama
-        local slotNum, count = 0, 0
+        local slotNum, count = nil, 0
         if BackpackSync then
             slotNum, count = BackpackSync.findSlotByImage(Manager.DROP_IMAGE_ID)
         end
@@ -88,6 +123,13 @@ local function dropLoop()
             pcall(function()
                 RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             end)
+            
+            -- Destroy popup CEPAT sebelum render
+            destroyAllPopups()
+            task.wait(0.05)
+            destroyAllPopups()
+            
+            -- Confirm drop via UIPromptEvent
             pcall(function()
                 RemotePrompt:FireServer({
                     ButtonAction = "drp",
@@ -96,36 +138,35 @@ local function dropLoop()
                     }
                 })
             end)
+            
+            -- Double kill popup
+            destroyAllPopups()
+            
         elseif not slotNum then
-            -- Item TIDAK ditemukan di backpack → stop
             Manager._dropRunning = false
             warn("[Manager] Auto Drop berhenti: Item tidak ditemukan di backpack")
             break
         end
-        -- Kalau count < DROP_AMOUNT → skip, tunggu, cek lagi
 
         task.wait(Manager.DROP_DELAY)
     end
 end
 
 -- ═══════════════════════════════════════
--- IMAGE CAPTURE: Ambil imageId saat user select item
--- Dipanggil setelah detect callback
+-- IMAGE CAPTURE
 -- ═══════════════════════════════════════
 function Manager.captureItemImage(itemId)
     Manager.DROP_ITEM_ID = itemId
     
     if not BackpackSync then return end
     
-    -- Sync backpack dan cari slot yang itemnya baru saja di-place
-    -- (count berkurang 1, jadi cari slot dengan item)
+    -- Tunggu sebentar biar backpack update setelah place
+    task.wait(0.3)
     BackpackSync.sync()
     
-    -- Cari semua slot yang ada item-nya
+    -- Cari slot yang ada item-nya, ambil yg count berkurang
     local slots = BackpackSync.findSlotsWithItems()
     if #slots > 0 then
-        -- Ambil imageId dari slot pertama yang punya item
-        -- TODO: lebih akurat kalau bisa compare before/after
         local info = BackpackSync.getSlotInfo(slots[1])
         Manager.DROP_IMAGE_ID = info.imageId
     end

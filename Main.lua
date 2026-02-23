@@ -477,12 +477,18 @@ selectBtn.MouseButton1Click:Connect(function()
     if not hookSuccess then return end
     if detectCallback then
         detectCallback = nil
+        mainFrame.Visible = true
         selectBtn.BackgroundColor3 = C.accent
         selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
     else
         selectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
         selectBtn.Text = "⏳ Menunggu... Place 1 blok sekarang!"
+        
+        -- Minimize UI so user can place blocks
+        mainFrame.Visible = false
+        
         detectCallback = function(id)
+            mainFrame.Visible = true
             AutoPnB.ITEM_ID = id
             selectBtn.BackgroundColor3 = C.accent
             selectBtn.Text = "🔍 Select Item — Klik lalu Place 1 blok"
@@ -758,14 +764,24 @@ Instance.new("UICorner", dropSelectBtn).CornerRadius = UDim.new(0, 5)
 dropSelectBtn.MouseButton1Click:Connect(function()
     if not hookSuccess then return end
     if detectCallback then
+        -- Cancel selection, restore UI
         detectCallback = nil
+        mainFrame.Visible = true
         dropSelectBtn.BackgroundColor3 = C.accent
         dropSelectBtn.Text = "🔍 Select Item"
     else
         dropSelectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
         dropSelectBtn.Text = "⏳ Place 1 blok..."
+        
+        -- Minimize UI so user can place blocks in the game
+        mainFrame.Visible = false
+        
         detectCallback = function(id)
-            ManagerModule.captureItemImage(id)  -- captures itemId + imageId from backpack
+            -- Restore UI first
+            mainFrame.Visible = true
+            
+            -- Capture item + image
+            ManagerModule.captureItemImage(id)
             dropItemDisplay.Text = tostring(id)
             dropSelectBtn.BackgroundColor3 = C.accent
             dropSelectBtn.Text = "🔍 Select Item"
