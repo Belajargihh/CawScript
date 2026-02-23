@@ -955,11 +955,11 @@ amtSliderFill.Parent = amtSliderBg
 Instance.new("UICorner", amtSliderFill).CornerRadius = UDim.new(0, 3)
 
 local amtSliderHit = Instance.new("TextButton")
-amtSliderHit.Size = UDim2.new(1, 0, 0, 16)
-amtSliderHit.Position = UDim2.new(0, 0, 0, 43)
+amtSliderHit.Size = UDim2.new(1, 0, 1, 0)
 amtSliderHit.BackgroundTransparency = 1
+amtSliderHit.ZIndex = 5
 amtSliderHit.Text = ""
-amtSliderHit.Parent = dropItemRow
+amtSliderHit.Parent = amtSliderBg
 
 local amtDragging = false
 amtSliderHit.InputBegan:Connect(function(input)
@@ -984,7 +984,8 @@ end)
 
 local dropToggle = Instance.new("TextButton")
 dropToggle.Size = UDim2.new(1, 0, 0, 26)
-dropToggle.Position = UDim2.new(0, 0, 0, 64)
+dropToggle.Position = UDim2.new(0, 0, 0, 0) -- Position handled by UIListLayout
+dropToggle.LayoutOrder = 100 -- Always at bottom
 dropToggle.BackgroundColor3 = C.btnGrey
 dropToggle.Text = "OFF"
 dropToggle.TextColor3 = C.white

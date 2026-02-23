@@ -20,11 +20,12 @@ local player = Players.LocalPlayer
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local Managers = game:GetService("ReplicatedStorage"):WaitForChild("Managers", 5)
 
-local RemotePrompt, RemotePlace, RemoteFist
+local RemotePrompt, RemotePlace, RemoteFist, RemoteDrop
 
 if Remotes then
     RemotePlace = Remotes:FindFirstChild("PlayerPlaceItem")
     RemoteFist  = Remotes:FindFirstChild("PlayerFist")
+    RemoteDrop  = Remotes:FindFirstChild("PlayerDrop")
 end
 
 if Managers then
@@ -82,6 +83,15 @@ local function dropLoop()
 
         if slotNum and count >= Manager.DROP_AMOUNT then
             -- Item ditemukan & jumlah cukup → LANGSUNG CONFIRM (skip popup!)
+            -- Fire PlayerDrop dulu biar server siap
+            pcall(function()
+                RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
+            end)
+            
+            -- Kasih jeda sangat singkat agar server process PlayerDrop
+            task.wait(0.05)
+            
+            -- Fire confirm
             pcall(function()
                 RemotePrompt:FireServer({
                     ButtonAction = "drp",
