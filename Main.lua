@@ -127,8 +127,18 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "KolinUI"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 999  -- Selalu di atas popup game
-gui.Parent = player.PlayerGui
+gui.DisplayOrder = 999
+
+-- Parent ke CoreGui supaya kebal dari game (gak bisa di-destroy/hide)
+local guiParent
+pcall(function() guiParent = gethui() end)  -- Delta Executor
+if not guiParent then
+    pcall(function() guiParent = game:GetService("CoreGui") end)
+end
+if not guiParent then
+    guiParent = player.PlayerGui  -- fallback
+end
+gui.Parent = guiParent
 
 -- ═══════════════════════════════════════
 -- MAIN FRAME

@@ -2,8 +2,8 @@
     ManagerModule.lua
     Module: Manager Features — Auto Drop & Auto Collect
 
-    Auto Drop: fire PlayerDrop + UIPromptEvent back-to-back (NO delay)
-    to skip popup animation entirely
+    Auto Drop: fire PlayerDrop → immediately confirm via UIPromptEvent
+    → then destroy the popup GUI so it doesn't show
 ]]
 
 local Manager = {}
@@ -13,6 +13,9 @@ local Manager = {}
 -- ═══════════════════════════════════════
 local Antiban
 local Coordinates
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local Managers = game:GetService("ReplicatedStorage"):WaitForChild("Managers", 5)
@@ -33,7 +36,7 @@ if Managers then
 end
 
 -- ═══════════════════════════════════════
--- CONFIGURATION: AUTO DROP
+-- CONFIG: AUTO DROP
 -- ═══════════════════════════════════════
 Manager.DROP_ITEM_ID    = 1
 Manager.DROP_AMOUNT     = 1
@@ -42,7 +45,7 @@ Manager._dropRunning    = false
 Manager._dropThread     = nil
 
 -- ═══════════════════════════════════════
--- CONFIGURATION: AUTO COLLECT (FARM)
+-- CONFIG: AUTO COLLECT
 -- ═══════════════════════════════════════
 Manager.COLLECT_BLOCK_ID   = 1
 Manager.COLLECT_SAPLING_ID = 1
@@ -52,20 +55,48 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
+-- HELPER: Destroy popup from PlayerGui
+-- ═══════════════════════════════════════
+local function destroyPopup()
+    pcall(function()
+        local pg = player:FindFirstChild("PlayerGui")
+        if not pg then return end
+        for _, g in ipairs(pg:GetChildren()) do
+            if g:IsA("ScreenGui") and g.Name ~= "KolinUI" then
+                -- Cari frame popup drop
+                for _, child in ipairs(g:GetDescendants()) do
+                    if child:IsA("TextLabel") then
+                        local txt = child.Text or ""
+                        if txt:find("Drop") and txt:find("?") then
+                            -- Ini popup drop, destroy parent ScreenGui-nya
+                            g:Destroy()
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════
 -- AUTO DROP LOOP
--- Fire PlayerDrop + UIPromptEvent INSTANTLY (no delay = no popup)
 -- ═══════════════════════════════════════
 
 local function dropLoop()
     while Manager._dropRunning do
-        if not RemotePrompt then
+        if not RemoteDrop or not RemotePrompt then
             Manager._dropRunning = false
-            warn("[Manager] Auto Drop gagal: UIPromptEvent tidak ditemukan")
+            warn("[Manager] Auto Drop gagal: Remote tidak ditemukan")
             break
         end
 
-        -- SKIP PlayerDrop — langsung fire UIPromptEvent aja
-        -- Ini bypass popup sepenuhnya
+        -- Step 1: Fire PlayerDrop (server perlu ini buat tau item mana)
+        pcall(function()
+            RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
+        end)
+        
+        -- Step 2: LANGSUNG confirm (tanpa nunggu popup render)
         pcall(function()
             RemotePrompt:FireServer({
                 ButtonAction = "drp",
@@ -74,6 +105,11 @@ local function dropLoop()
                 }
             })
         end)
+        
+        -- Step 3: Destroy popup kalau masih sempet muncul
+        destroyPopup()
+        task.wait(0.1)
+        destroyPopup()  -- double kill
 
         task.wait(Manager.DROP_DELAY)
     end
@@ -93,20 +129,12 @@ local function collectLoop()
                     if not Manager._collectRunning then break end
                     if not RemoteFist or not RemotePlace then
                         Manager._collectRunning = false
-                        warn("[Manager] Auto Collect gagal: Remote tidak lengkap")
                         break
                     end
-
                     local tx, ty = px + dx, py + dy
-
-                    pcall(function()
-                        RemoteFist:FireServer(Vector2.new(tx, ty))
-                    end)
+                    pcall(function() RemoteFist:FireServer(Vector2.new(tx, ty)) end)
                     task.wait(0.1)
-
-                    pcall(function()
-                        RemotePlace:FireServer(Vector2.new(tx, ty), Manager.COLLECT_SAPLING_ID)
-                    end)
+                    pcall(function() RemotePlace:FireServer(Vector2.new(tx, ty), Manager.COLLECT_SAPLING_ID) end)
                     task.wait(Manager.COLLECT_DELAY)
                 end
                 if not Manager._collectRunning then break end
