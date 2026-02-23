@@ -149,6 +149,20 @@ function BackpackSync.findSlotsWithItems()
     return found
 end
 
+-- Cari slot berdasarkan imageId (untuk auto drop matching)
+function BackpackSync.findSlotByImage(targetImage)
+    if tick() - BackpackSync._lastSync > BackpackSync._syncInterval then
+        BackpackSync.sync()
+    end
+    for i = 1, BackpackSync._totalSlots do
+        local slot = BackpackSync._slots[i]
+        if slot and slot.imageId == targetImage and slot.hasItem then
+            return i, slot.count
+        end
+    end
+    return nil, 0  -- item tidak ditemukan
+end
+
 function BackpackSync.hasEnough(slotNumber, amount)
     return BackpackSync.getSlotCount(slotNumber) >= amount
 end

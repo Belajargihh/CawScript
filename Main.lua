@@ -765,7 +765,7 @@ dropSelectBtn.MouseButton1Click:Connect(function()
         dropSelectBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
         dropSelectBtn.Text = "⏳ Place 1 blok..."
         detectCallback = function(id)
-            ManagerModule.DROP_ITEM_ID = id
+            ManagerModule.captureItemImage(id)  -- captures itemId + imageId from backpack
             dropItemDisplay.Text = tostring(id)
             dropSelectBtn.BackgroundColor3 = C.accent
             dropSelectBtn.Text = "🔍 Select Item"

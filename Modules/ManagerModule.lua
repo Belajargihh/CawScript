@@ -1,6 +1,11 @@
 --[[
     ManagerModule.lua
-    Auto Drop & Auto Collect — uses BackpackSync for inventory checking
+    Auto Drop & Auto Collect — Smart drop with image-based item matching
+
+    Flow:
+    1. User selects item → captures itemId + imageId
+    2. Drop loop: findSlotByImage → check count → drop or skip
+    3. No blind looping anymore!
 ]]
 
 local Manager = {}
@@ -33,8 +38,9 @@ end
 -- ═══════════════════════════════════════
 -- CONFIG: AUTO DROP
 -- ═══════════════════════════════════════
-Manager.DROP_ITEM_ID    = 1   -- slot number (1-16)
-Manager.DROP_AMOUNT     = 1   -- minimal jumlah sebelum drop
+Manager.DROP_ITEM_ID    = 1       -- remote item ID (from hook)
+Manager.DROP_IMAGE_ID   = ""      -- image ID of selected item (for matching)
+Manager.DROP_AMOUNT     = 1       -- jumlah per drop
 Manager.DROP_DELAY      = 2
 Manager._dropRunning    = false
 Manager._dropThread     = nil
@@ -50,8 +56,10 @@ Manager._collectRunning    = false
 Manager._collectThread     = nil
 
 -- ═══════════════════════════════════════
--- AUTO DROP LOOP
--- Cek BackpackSync → drop kalau cukup
+-- SMART AUTO DROP LOOP
+-- 1. Cari slot dengan image yang sama
+-- 2. Cek count >= DROP_AMOUNT
+-- 3. Drop kalau cukup, skip kalau nggak
 -- ═══════════════════════════════════════
 
 local function dropLoop()
@@ -62,14 +70,21 @@ local function dropLoop()
             break
         end
 
-        -- Cek jumlah via BackpackSync
-        local count = 0
-        if BackpackSync then
-            count = BackpackSync.getSlotCount(Manager.DROP_ITEM_ID)
+        -- Image ID harus ada (user harus select item dulu)
+        if Manager.DROP_IMAGE_ID == "" then
+            Manager._dropRunning = false
+            warn("[Manager] Auto Drop gagal: Item belum dipilih (image kosong)")
+            break
         end
 
-        if count >= Manager.DROP_AMOUNT then
-            -- Cukup → drop!
+        -- SYNC: cari slot yang punya item dengan image yang sama
+        local slotNum, count = 0, 0
+        if BackpackSync then
+            slotNum, count = BackpackSync.findSlotByImage(Manager.DROP_IMAGE_ID)
+        end
+
+        if slotNum and count >= Manager.DROP_AMOUNT then
+            -- Item ditemukan & jumlah cukup → DROP!
             pcall(function()
                 RemoteDrop:FireServer(Manager.DROP_ITEM_ID)
             end)
@@ -81,9 +96,38 @@ local function dropLoop()
                     }
                 })
             end)
+        elseif not slotNum then
+            -- Item TIDAK ditemukan di backpack → stop
+            Manager._dropRunning = false
+            warn("[Manager] Auto Drop berhenti: Item tidak ditemukan di backpack")
+            break
         end
+        -- Kalau count < DROP_AMOUNT → skip, tunggu, cek lagi
 
         task.wait(Manager.DROP_DELAY)
+    end
+end
+
+-- ═══════════════════════════════════════
+-- IMAGE CAPTURE: Ambil imageId saat user select item
+-- Dipanggil setelah detect callback
+-- ═══════════════════════════════════════
+function Manager.captureItemImage(itemId)
+    Manager.DROP_ITEM_ID = itemId
+    
+    if not BackpackSync then return end
+    
+    -- Sync backpack dan cari slot yang itemnya baru saja di-place
+    -- (count berkurang 1, jadi cari slot dengan item)
+    BackpackSync.sync()
+    
+    -- Cari semua slot yang ada item-nya
+    local slots = BackpackSync.findSlotsWithItems()
+    if #slots > 0 then
+        -- Ambil imageId dari slot pertama yang punya item
+        -- TODO: lebih akurat kalau bisa compare before/after
+        local info = BackpackSync.getSlotInfo(slots[1])
+        Manager.DROP_IMAGE_ID = info.imageId
     end
 end
 
@@ -128,6 +172,10 @@ end
 
 function Manager.startDrop()
     if Manager._dropRunning then return end
+    if Manager.DROP_IMAGE_ID == "" then
+        warn("[Manager] Pilih item dulu sebelum Auto Drop!")
+        return
+    end
     Manager._dropRunning = true
     Manager._dropThread = task.spawn(dropLoop)
 end
