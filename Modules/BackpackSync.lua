@@ -18,15 +18,16 @@ BackpackSync._syncInterval = 0.5
 BackpackSync._hotbar = nil  -- cache hotbar reference
 
 -- ═══════════════════════════════════════
--- INTERNAL: Cari Hotbar (with WaitForChild)
+-- INTERNAL: Cari InventoryScroll (data asli ada di sini)
+-- Path: InventoryUI > Handle > Frame > Bottom > Frame > InventoryFrame > InventoryScroll
 -- ═══════════════════════════════════════
-local function findHotbar()
+local function findInventoryScroll()
     -- Kalau sudah di-cache dan masih valid, pakai cache
     if BackpackSync._hotbar and BackpackSync._hotbar.Parent then
         return BackpackSync._hotbar
     end
     
-    local ok, hotbar = pcall(function()
+    local ok, scroll = pcall(function()
         local pg = player:WaitForChild("PlayerGui", 3)
         if not pg then return nil end
         local inv = pg:WaitForChild("InventoryUI", 3)
@@ -35,13 +36,19 @@ local function findHotbar()
         if not handle then return nil end
         local frame = handle:WaitForChild("Frame", 3)
         if not frame then return nil end
-        local hb = frame:WaitForChild("Hotbar", 3)
-        return hb
+        local bottom = frame:WaitForChild("Bottom", 3)
+        if not bottom then return nil end
+        local innerFrame = bottom:WaitForChild("Frame", 3)
+        if not innerFrame then return nil end
+        local invFrame = innerFrame:WaitForChild("InventoryFrame", 3)
+        if not invFrame then return nil end
+        local invScroll = invFrame:WaitForChild("InventoryScroll", 3)
+        return invScroll
     end)
     
-    if ok and hotbar then
-        BackpackSync._hotbar = hotbar
-        return hotbar
+    if ok and scroll then
+        BackpackSync._hotbar = scroll  -- cache it
+        return scroll
     end
     return nil
 end
@@ -75,7 +82,7 @@ end
 -- SYNC: Update semua slot
 -- ═══════════════════════════════════════
 function BackpackSync.sync()
-    local hotbar = findHotbar()
+    local hotbar = findInventoryScroll()
     if not hotbar then return false end
     
     for i = 1, BackpackSync._totalSlots do
