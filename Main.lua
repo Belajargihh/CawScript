@@ -101,23 +101,22 @@ end
 -- ═══════════════════════════════════════
 
 local C = {
-    bg          = Color3.fromRGB(250, 250, 250), -- Putih Bersih
-    sidebar     = Color3.fromRGB(255, 120, 0),   -- Orange Citrus
-    sideActive  = Color3.fromRGB(255, 255, 255), -- Putih Active
-    sideHover   = Color3.fromRGB(255, 150, 50),
-    sideText    = Color3.fromRGB(255, 220, 200),
-    titleBar    = Color3.fromRGB(255, 100, 0),   -- Orange Pekat
-    cellOff     = Color3.fromRGB(230, 230, 235),
-    cellOn      = Color3.fromRGB(255, 140, 0),   -- Orange Cell
-    cellPlayer  = Color3.fromRGB(50, 150, 255),
+    bg          = Color3.fromRGB(18, 18, 28),
+    sidebar     = Color3.fromRGB(14, 14, 22),
+    sideActive  = Color3.fromRGB(100, 80, 255),
+    sideHover   = Color3.fromRGB(35, 35, 50),
+    sideText    = Color3.fromRGB(120, 120, 140),
+    titleBar    = Color3.fromRGB(24, 24, 38),
+    cellOff     = Color3.fromRGB(40, 40, 55),
+    cellOn      = Color3.fromRGB(0, 180, 80),
+    cellPlayer  = Color3.fromRGB(50, 120, 220),
     white       = Color3.fromRGB(255, 255, 255),
-    black       = Color3.fromRGB(40, 40, 40),      -- Text Utama
-    dim         = Color3.fromRGB(120, 120, 130),  -- Text Sekunder
-    btnStart    = Color3.fromRGB(255, 120, 0),
+    dim         = Color3.fromRGB(140, 140, 160),
+    btnStart    = Color3.fromRGB(0, 160, 70),
     btnStop     = Color3.fromRGB(200, 50, 50),
-    btnGrey     = Color3.fromRGB(200, 200, 210),
-    accent      = Color3.fromRGB(255, 110, 0),
-    comingSoon  = Color3.fromRGB(150, 150, 160),
+    btnGrey     = Color3.fromRGB(50, 50, 70),
+    accent      = Color3.fromRGB(100, 80, 255),
+    comingSoon  = Color3.fromRGB(80, 80, 100),
 }
 
 -- ═══════════════════════════════════════
@@ -396,7 +395,7 @@ local posLabel = Instance.new("TextLabel")
 posLabel.Size = UDim2.new(1, 0, 0, 16)
 posLabel.BackgroundTransparency = 1
 posLabel.Text = "📍 Posisi: ..."
-posLabel.TextColor3 = C.black
+posLabel.TextColor3 = C.dim
 posLabel.TextSize = 12
 posLabel.Font = Enum.Font.Gotham
 posLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -413,7 +412,7 @@ local itemLabel = Instance.new("TextLabel")
 itemLabel.Size = UDim2.new(0, 70, 0, 22)
 itemLabel.BackgroundTransparency = 1
 itemLabel.Text = "🧱 Item:"
-itemLabel.TextColor3 = C.black
+itemLabel.TextColor3 = C.dim
 itemLabel.TextSize = 12
 itemLabel.Font = Enum.Font.Gotham
 itemLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -422,9 +421,9 @@ itemLabel.Parent = itemRow
 local itemDisplay = Instance.new("TextLabel")
 itemDisplay.Size = UDim2.new(0, 50, 0, 22)
 itemDisplay.Position = UDim2.new(0, 70, 0, 0)
-itemDisplay.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+itemDisplay.BackgroundColor3 = C.cellOff
 itemDisplay.Text = "2"
-itemDisplay.TextColor3 = C.black
+itemDisplay.TextColor3 = C.dim
 itemDisplay.TextSize = 13
 itemDisplay.Font = Enum.Font.GothamBold
 itemDisplay.BorderSizePixel = 0
@@ -710,9 +709,9 @@ dropItemRow.Parent = dropContent
 
 local dropItemDisplay = Instance.new("TextLabel")
 dropItemDisplay.Size = UDim2.new(0, 50, 0, 22)
-dropItemDisplay.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+dropItemDisplay.BackgroundColor3 = C.cellOff
 dropItemDisplay.Text = "1"
-dropItemDisplay.TextColor3 = C.black
+dropItemDisplay.TextColor3 = C.dim
 dropItemDisplay.TextSize = 13
 dropItemDisplay.Font = Enum.Font.GothamBold
 dropItemDisplay.BorderSizePixel = 0
@@ -754,8 +753,8 @@ local amtLabel = Instance.new("TextLabel")
 amtLabel.Size = UDim2.new(1, 0, 0, 20)
 amtLabel.Position = UDim2.new(0, 0, 0, 28)
 amtLabel.BackgroundTransparency = 1
-amtLabel.Text = "Jumlah Trash: 1"
-amtLabel.TextColor3 = C.black
+amtLabel.Text = "Jumlah Drop: 1"
+amtLabel.TextColor3 = C.dim
 amtLabel.TextSize = 11
 amtLabel.Font = Enum.Font.Gotham
 amtLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -795,7 +794,7 @@ UIS.InputChanged:Connect(function(input)
         amtSliderFill.Size = UDim2.new(rel, 0, 1, 0)
         local val = math.max(math.floor(rel * 200), 1)
         ManagerModule.DROP_AMOUNT = val
-        amtLabel.Text = "Jumlah Trash: " .. val
+        amtLabel.Text = "Jumlah Drop: " .. val
     end
 end)
 UIS.InputEnded:Connect(function(input)
@@ -841,7 +840,7 @@ local function createManagerItem(parent, y, label, defaultId, onSelected)
     lbl.Size = UDim2.new(0, 50, 1, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = label
-    lbl.TextColor3 = C.black
+    lbl.TextColor3 = C.dim
     lbl.TextSize = 10
     lbl.Font = Enum.Font.Gotham
     lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -850,9 +849,9 @@ local function createManagerItem(parent, y, label, defaultId, onSelected)
     local disp = Instance.new("TextLabel")
     disp.Size = UDim2.new(0, 40, 0, 20)
     disp.Position = UDim2.new(0, 55, 0, 2)
-    disp.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    disp.BackgroundColor3 = C.cellOff
     disp.Text = tostring(defaultId)
-    disp.TextColor3 = C.black
+    disp.TextColor3 = C.dim
     disp.TextSize = 12
     disp.Font = Enum.Font.GothamBold
     disp.BorderSizePixel = 0
@@ -899,7 +898,7 @@ rangeLabel.Size = UDim2.new(1, 0, 0, 16)
 rangeLabel.Position = UDim2.new(0, 0, 0, 56)
 rangeLabel.BackgroundTransparency = 1
 rangeLabel.Text = "Radius: 2 Grid"
-rangeLabel.TextColor3 = C.black
+rangeLabel.TextColor3 = C.dim
 rangeLabel.TextSize = 11
 rangeLabel.Font = Enum.Font.Gotham
 rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
