@@ -21,9 +21,11 @@ local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua
 local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua" .. NOCACHE))()
 local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua" .. NOCACHE))()
 local BackpackSync = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/BackpackSync.lua" .. NOCACHE))()
+local ClearWorld   = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ClearWorld.lua" .. NOCACHE))()
 
 print("[CawScript] Initializing modules...")
 AutoPnB.init(Coordinates, Antiban)
+ClearWorld.init(Antiban)
 
 local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
 ManagerModule.init(Coordinates, Antiban, BackpackSync)
@@ -1231,7 +1233,129 @@ tabFrames[2] = tabManager
 
 tabFrames[3] = createComingSoonTab(contentContainer, "Rotasi")
 tabFrames[4] = createComingSoonTab(contentContainer, "Bot")
-tabFrames[5] = createComingSoonTab(contentContainer, "Clear World")
+
+-- ═══════════════════════════════════════
+-- TAB 5: CLEAR WORLD
+-- ═══════════════════════════════════════
+local tabClear = Instance.new("ScrollingFrame")
+tabClear.Size = UDim2.new(1, -10, 1, -10)
+tabClear.Position = UDim2.new(0, 5, 0, 5)
+tabClear.BackgroundTransparency = 1
+tabClear.BorderSizePixel = 0
+tabClear.ScrollBarThickness = 2
+tabClear.Visible = false
+tabClear.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabClear.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabClear.Parent = contentContainer
+tabFrames[5] = tabClear
+
+local clearList = Instance.new("UIListLayout")
+clearList.Padding = UDim.new(0, 15)
+clearList.SortOrder = Enum.SortOrder.LayoutOrder
+clearList.Parent = tabClear
+
+local clearPadding = Instance.new("UIPadding")
+clearPadding.PaddingLeft = UDim.new(0, 5)
+clearPadding.PaddingRight = UDim.new(0, 5)
+clearPadding.PaddingTop = UDim.new(0, 10)
+clearPadding.Parent = tabClear
+
+local clearHeader = Instance.new("TextLabel")
+clearHeader.Size = UDim2.new(1, 0, 0, 24)
+clearHeader.BackgroundTransparency = 1
+clearHeader.Text = "🌍 Clear World Automator"
+clearHeader.TextColor3 = C.white
+clearHeader.TextSize = 14
+clearHeader.Font = Enum.Font.GothamBold
+clearHeader.TextXAlignment = Enum.TextXAlignment.Left
+clearHeader.Parent = tabClear
+
+local clearDesc = Instance.new("TextLabel")
+clearDesc.Size = UDim2.new(1, 0, 0, 32)
+clearDesc.BackgroundTransparency = 1
+clearDesc.Text = "Menghancurkan semua blok di world (X: 0-100, Y: 0-60). Gunakan Magnet untuk hasil maksimal."
+clearDesc.TextColor3 = C.dim
+clearDesc.TextSize = 10
+clearDesc.Font = Enum.Font.Gotham
+clearDesc.TextWrapped = true
+clearDesc.TextXAlignment = Enum.TextXAlignment.Left
+clearDesc.Parent = tabClear
+
+-- Progress Section
+local progFrame = Instance.new("Frame")
+progFrame.Size = UDim2.new(1, 0, 0, 50)
+progFrame.BackgroundTransparency = 1
+progFrame.Parent = tabClear
+
+local progLabel = Instance.new("TextLabel")
+progLabel.Size = UDim2.new(1, 0, 0, 20)
+progLabel.BackgroundTransparency = 1
+progLabel.Text = "Progress: 0%"
+progLabel.TextColor3 = C.white
+progLabel.TextSize = 12
+progLabel.Font = Enum.Font.GothamBold
+progLabel.Parent = progFrame
+
+local progBg = Instance.new("Frame")
+progBg.Size = UDim2.new(1, 0, 0, 10)
+progBg.Position = UDim2.new(0, 0, 0, 25)
+progBg.BackgroundColor3 = C.cellOff
+progBg.BorderSizePixel = 0
+progBg.Parent = progFrame
+Instance.new("UICorner", progBg).CornerRadius = UDim.new(0, 5)
+
+local progFill = Instance.new("Frame")
+progFill.Size = UDim2.new(0, 0, 1, 0)
+progFill.BackgroundColor3 = C.accent
+progFill.BorderSizePixel = 0
+progFill.Parent = progBg
+Instance.new("UICorner", progFill).CornerRadius = UDim.new(0, 5)
+
+local clearStatus = Instance.new("TextLabel")
+clearStatus.Size = UDim2.new(1, 0, 0, 14)
+clearStatus.Position = UDim2.new(0, 0, 0, 40)
+clearStatus.BackgroundTransparency = 1
+clearStatus.Text = "Status: Idle"
+clearStatus.TextColor3 = C.dim
+clearStatus.TextSize = 11
+clearStatus.Font = Enum.Font.Gotham
+clearStatus.Parent = progFrame
+
+-- Buttons
+local clearBtnRow = Instance.new("Frame")
+clearBtnRow.Size = UDim2.new(1, 0, 0, 32)
+clearBtnRow.BackgroundTransparency = 1
+clearBtnRow.Parent = tabClear
+
+local startClearBtn = Instance.new("TextButton")
+startClearBtn.Size = UDim2.new(0, 125, 1, 0)
+startClearBtn.Position = UDim2.new(0, 0, 0, 0)
+startClearBtn.BackgroundColor3 = C.btnStart
+startClearBtn.Text = "▶ START CLEAR"
+startClearBtn.TextColor3 = C.white
+startClearBtn.TextSize = 12
+startClearBtn.Font = Enum.Font.GothamBold
+startClearBtn.Parent = clearBtnRow
+Instance.new("UICorner", startClearBtn).CornerRadius = UDim.new(0, 6)
+
+local stopClearBtn = Instance.new("TextButton")
+stopClearBtn.Size = UDim2.new(0, 125, 1, 0)
+stopClearBtn.Position = UDim2.new(1, -125, 0, 0)
+stopClearBtn.BackgroundColor3 = C.btnStop
+stopClearBtn.Text = "■ STOP"
+stopClearBtn.TextColor3 = C.white
+stopClearBtn.TextSize = 12
+stopClearBtn.Font = Enum.Font.GothamBold
+stopClearBtn.Parent = clearBtnRow
+Instance.new("UICorner", stopClearBtn).CornerRadius = UDim.new(0, 6)
+
+startClearBtn.MouseButton1Click:Connect(function()
+    ClearWorld.start()
+end)
+
+stopClearBtn.MouseButton1Click:Connect(function()
+    ClearWorld.stop()
+end)
 
 -- ═══════════════════════════════════════
 -- TAB 6: PLAYER
@@ -1420,16 +1544,21 @@ spawn(function()
             statusLabel.Text = "Status: " .. AutoPnB.getStatus()
             cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount()
             
-            if AutoPnB.isRunning() then
-                startBtn.BackgroundColor3 = C.btnGrey
-                stopBtn.BackgroundColor3 = C.btnStop
+        -- Update Clear World Tab
+        elseif activeTab == 5 then
+            local progress = ClearWorld.getProgress()
+            progLabel.Text = "Progress: " .. progress .. "%"
+            progFill.Size = UDim2.new(progress / 100, 0, 1, 0)
+            clearStatus.Text = "Status: " .. ClearWorld.getStatus()
+            
+            if ClearWorld.isRunning() then
+                startClearBtn.BackgroundColor3 = C.btnGrey
+                stopClearBtn.BackgroundColor3 = C.btnStop
             else
-                startBtn.BackgroundColor3 = C.btnStart
-                stopBtn.BackgroundColor3 = C.btnGrey
+                startClearBtn.BackgroundColor3 = C.btnStart
+                stopClearBtn.BackgroundColor3 = C.btnGrey
             end
         end
-        
-        -- Update Manager Tab UI (handled by local variables in that tab's definition)
         
         task.wait(0.5)
     end
