@@ -221,7 +221,7 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - Touch Simulation Mode")
+    print("[DEBUG] Magnet loop started - God Magnet Mode")
     while Manager._collectRunning do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -250,28 +250,31 @@ local function magnetLoop()
                             end
 
                             if shouldCollect then
-                                -- Trik Paling Jitu: firetouchinterest (Simulasi karakter nyentuh benda di server)
+                                -- STRATEGI GOD MAGNET: Kita samperin item-nya beneran tapi super cepet
+                                local oldCF = root.CFrame
+                                local targetCF = item:GetPivot()
+                                
+                                -- 1. Coba firetouchinterest dulu (kalo ada)
                                 local touch = item:FindFirstChildOfClass("TouchInterest")
                                 if firetouchinterest and touch then
-                                    firetouchinterest(root, item, 0) -- Touch start
+                                    firetouchinterest(root, item, 0)
                                     task.wait()
-                                    firetouchinterest(root, item, 1) -- Touch end
-                                    print("[MAGNET] Fired touch for: " .. item.Name)
-                                else
-                                    -- Fallback: Teleport ke badan player (Kalau item punya Hitbox di server)
-                                    if item:IsA("BasePart") then
-                                        item.CFrame = root.CFrame
-                                    else
-                                        item:PivotTo(root.CFrame)
-                                    end
+                                    firetouchinterest(root, item, 1)
                                 end
+                                
+                                -- 2. Teleport Player ke Item (Biar server yakin kita nyentuh)
+                                root.CFrame = targetCF
+                                task.wait(0.05) -- Berhenti sebentar di item (50ms)
+                                root.CFrame = oldCF -- Balik ke posisi asal
+                                
+                                print("[MAGNET] God Collected: " .. item.Name)
                             end
                         end
                     end)
                 end
             end
         end
-        task.wait(0.2) -- Jeda biar gak spam server
+        task.wait(0.3) -- Jeda biar gak pusing karakternya kedip-kedip
     end
     print("[DEBUG] Magnet loop stopped")
 end
