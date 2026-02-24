@@ -26,9 +26,7 @@ local RemoteFist  = Remotes:WaitForChild("PlayerFist")
 -- ═══════════════════════════════════════
 
 AutoPnB.ITEM_ID      = 2       -- Item ID (2 = Dirt Block)
-AutoPnB.DELAY_PLACE  = 0.15    -- Jeda setelah place (dipercepat jadi 150ms)
-AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah punch (150ms)
-AutoPnB.DELAY_CYCLE  = 0.3     -- Jeda antar siklus penuh
+AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah setiap aksi (150ms)
 AutoPnB.ENABLE_PLACE = true     -- Toggle place ON/OFF
 AutoPnB.ENABLE_BREAK = true     -- Toggle break ON/OFF
 
@@ -99,7 +97,7 @@ local function pnbLoop()
                             else
                                 doPlace(targetX, targetY, AutoPnB.ITEM_ID)
                             end
-                            task.wait(AutoPnB.DELAY_PLACE)
+                            task.wait(AutoPnB.DELAY_BREAK)
                             if not AutoPnB._running then break end
                         end
                         
@@ -121,7 +119,7 @@ local function pnbLoop()
                 if AutoPnB._running then
                     AutoPnB._cycleCount = AutoPnB._cycleCount + 1
                     AutoPnB._statusText = "Siklus #" .. AutoPnB._cycleCount
-                    task.wait(AutoPnB.DELAY_CYCLE)
+                    task.wait(AutoPnB.DELAY_BREAK)
                 end
             end
         end

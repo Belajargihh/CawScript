@@ -754,7 +754,7 @@ local delayLabel = Instance.new("TextLabel")
 delayLabel.Size = UDim2.new(1, 0, 0, 14)
 delayLabel.Position = UDim2.new(0, 0, 0, delayY)
 delayLabel.BackgroundTransparency = 1
-delayLabel.Text = "Delay: 0.30s"
+delayLabel.Text = "⏱️ Delay Break: 0.15s"
 delayLabel.TextColor3 = C.dim
 delayLabel.TextSize = 11
 delayLabel.Font = Enum.Font.Gotham
@@ -770,7 +770,7 @@ sliderBg.Parent = tabPnB
 Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(0, 3)
 
 local sliderFill = Instance.new("Frame")
-sliderFill.Size = UDim2.new(0.15, 0, 1, 0)
+sliderFill.Size = UDim2.new(0.075, 0, 1, 0)
 sliderFill.BackgroundColor3 = C.accent
 sliderFill.BorderSizePixel = 0
 sliderFill.Parent = sliderBg
@@ -794,8 +794,8 @@ UIS.InputChanged:Connect(function(input)
         local rel = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
         sliderFill.Size = UDim2.new(rel, 0, 1, 0)
         local val = math.max(math.floor(rel * 200) / 100, 0.05)
-        AutoPnB.DELAY_CYCLE = val
-        delayLabel.Text = string.format("Delay: %.2fs", val)
+        AutoPnB.DELAY_BREAK = val
+        delayLabel.Text = string.format("⏱️ Delay Break: %.2fs", val)
     end
 end)
 UIS.InputEnded:Connect(function(input)
