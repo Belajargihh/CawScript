@@ -221,64 +221,59 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started")
+    print("[DEBUG] Magnet loop started - Aggressive Mode")
     while Manager._collectRunning do
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            -- Cari item di workspace (fokus ke folder Drops yang ditemukan di diagnosa)
-            local targetFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items") or workspace:FindFirstChild("DroppedItems") or workspace
+        local char = player.Character
+        local head = char and char:FindFirstChild("Head")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        
+        if head and root then
+            -- Cari folder Drops (DIAGNOSTIC UNGKAP INI TEMPATNYA)
+            local targetFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items") or workspace:FindFirstChild("DroppedItems")
             
-            local items = targetFolder:GetChildren()
-            for _, item in ipairs(items) do
-                if not Manager._collectRunning then break end
-                
-                -- Skip non-physical objects
-                if not (item:IsA("BasePart") or item:IsA("Model")) then continue end
-                if item.Name == player.Name or item.Name == "Terrain" then continue end
-                
-                -- Deteksi item: Cek attribute atau TouchInterest
-                local isItem = item:GetAttribute("itemID") or item:GetAttribute("Count") or item:FindFirstChild("TouchInterest")
-                
-                -- Heuristic based on name
-                local name = item.Name:lower()
-                if not isItem and (name:find("item") or name:find("block") or name:find("sapling") or name:find("seed") or name:find("drop")) then
-                    isItem = true
-                end
+            if targetFolder then
+                local items = targetFolder:GetChildren()
+                for _, item in ipairs(items) do
+                    if not Manager._collectRunning then break end
+                    
+                    -- Pake teleport paling paksa
+                    pcall(function()
+                        local pos = item:GetPivot().Position
+                        local dist = (pos - root.Position).Magnitude
+                        local maxStuds = Manager.COLLECT_RANGE * 4.5
+                        
+                        -- Log tiap ketemu sesuatu di folder Drops (biar tau script jalan)
+                        print("[MAGNET] Found item in Drops: " .. tostring(item.Name) .. " | Dist: " .. math.floor(dist))
 
-                if isItem then
-                    local pos = item:GetPivot().Position
-                    local dist = (pos - root.Position).Magnitude
-                    
-                    -- Grid-based Radius (1 grid = 4.5 studs)
-                    local maxStuds = Manager.COLLECT_RANGE * 4.5
-                    
-                    if dist <= maxStuds then
-                        -- Filter Sapling Only jika aktif
-                        local shouldCollect = true
-                        if Manager.COLLECT_SAPLING_ONLY then
-                            local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
-                            if not isSapling then
-                                shouldCollect = false
+
+                        if dist <= maxStuds then
+                            -- Filter Sapling Only
+                            local shouldCollect = true
+                            if Manager.COLLECT_SAPLING_ONLY then
+                                local name = item.Name:lower()
+                                local isSap = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
+                                if not isSap then shouldCollect = false end
+                            end
+
+                            if shouldCollect then
+                                -- Pastikan tidak anchored biar mau gerak
+                                if item:IsA("BasePart") then
+                                    item.Anchored = false
+                                    item.CFrame = head.CFrame
+                                else
+                                    -- Kalau model, unanchor semua part-nya
+                                    for _, p in ipairs(item:GetDescendants()) do
+                                        if p:IsA("BasePart") then p.Anchored = false end
+                                    end
+                                    item:PivotTo(head.CFrame)
+                                end
                             end
                         end
-
-                        if shouldCollect then
-                            -- Teleport item ke player (Magnet)
-                            pcall(function()
-                                if item:IsA("BasePart") then
-                                    item.CFrame = root.CFrame + Vector3.new(0, 1, 0) -- Kasih offset dikit biar pasti kena hitbox
-                                else
-                                    item:PivotTo(root.CFrame + Vector3.new(0, 1, 0))
-                                end
-                            end)
-                        end
-                    end
+                    end)
                 end
             end
-        else
-            print("[DEBUG] Magnet paused: HumanoidRootPart not found")
         end
-        task.wait(Manager.COLLECT_DELAY)
+        task.wait(0.1) -- Lebih cepet (10x per detik)
     end
     print("[DEBUG] Magnet loop stopped")
 end
