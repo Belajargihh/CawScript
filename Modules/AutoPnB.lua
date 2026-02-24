@@ -29,6 +29,8 @@ AutoPnB.ITEM_ID      = 2       -- Item ID (2 = Dirt Block)
 AutoPnB.DELAY_PLACE  = 0.2     -- Jeda setelah place
 AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah punch
 AutoPnB.DELAY_CYCLE  = 0.3     -- Jeda antar siklus penuh
+AutoPnB.ENABLE_PLACE = true     -- Toggle place ON/OFF
+AutoPnB.ENABLE_BREAK = true     -- Toggle break ON/OFF
 
 -- Multi-target: daftar offset {dx, dy} relatif dari posisi karakter
 -- Contoh: {{1,0}, {-1,0}, {0,1}} = kanan, kiri, atas
@@ -73,37 +75,47 @@ local function pnbLoop()
                 AutoPnB._statusText = "Karakter tidak ditemukan"
                 task.wait(0.5)
             else
-                -- Loop semua target
-                for _, offset in ipairs(AutoPnB._targets) do
-                    if not AutoPnB._running then break end
-                    
-                    local targetX = playerX + offset[1]
-                    local targetY = playerY + offset[2]
-                    
-                    AutoPnB._currentTarget = "X=" .. targetX .. " Y=" .. targetY
-                    
-                    -- Place
-                    AutoPnB._statusText = "Place di " .. AutoPnB._currentTarget
-                    if Antiban then
-                        Antiban.throttle(function()
-                            doPlace(targetX, targetY, AutoPnB.ITEM_ID)
-                        end)
-                    else
-                        doPlace(targetX, targetY, AutoPnB.ITEM_ID)
+                -- Cek minimal 1 mode aktif
+                if not AutoPnB.ENABLE_PLACE and not AutoPnB.ENABLE_BREAK then
+                    AutoPnB._statusText = "Place & Break OFF!"
+                    task.wait(1)
+                else
+                    -- Loop semua target
+                    for _, offset in ipairs(AutoPnB._targets) do
+                        if not AutoPnB._running then break end
+                        
+                        local targetX = playerX + offset[1]
+                        local targetY = playerY + offset[2]
+                        
+                        AutoPnB._currentTarget = "X=" .. targetX .. " Y=" .. targetY
+                        
+                        -- Place (jika aktif)
+                        if AutoPnB.ENABLE_PLACE then
+                            AutoPnB._statusText = "Place di " .. AutoPnB._currentTarget
+                            if Antiban then
+                                Antiban.throttle(function()
+                                    doPlace(targetX, targetY, AutoPnB.ITEM_ID)
+                                end)
+                            else
+                                doPlace(targetX, targetY, AutoPnB.ITEM_ID)
+                            end
+                            task.wait(AutoPnB.DELAY_PLACE)
+                            if not AutoPnB._running then break end
+                        end
+                        
+                        -- Punch / Break (jika aktif)
+                        if AutoPnB.ENABLE_BREAK then
+                            AutoPnB._statusText = "Punch di " .. AutoPnB._currentTarget
+                            if Antiban then
+                                Antiban.throttle(function()
+                                    doPunch(targetX, targetY)
+                                end)
+                            else
+                                doPunch(targetX, targetY)
+                            end
+                            task.wait(AutoPnB.DELAY_BREAK)
+                        end
                     end
-                    task.wait(AutoPnB.DELAY_PLACE)
-                    if not AutoPnB._running then break end
-                    
-                    -- Punch
-                    AutoPnB._statusText = "Punch di " .. AutoPnB._currentTarget
-                    if Antiban then
-                        Antiban.throttle(function()
-                            doPunch(targetX, targetY)
-                        end)
-                    else
-                        doPunch(targetX, targetY)
-                    end
-                    task.wait(AutoPnB.DELAY_BREAK)
                 end
                 
                 if AutoPnB._running then

@@ -627,10 +627,62 @@ gridHint.Font = Enum.Font.Gotham
 gridHint.Parent = tabPnB
 
 -- ═══════════════════════════════════════
+-- PLACE / BREAK TOGGLES
+-- ═══════════════════════════════════════
+
+local toggleY = 98 + gridTotal + 20
+
+local placeToggle = Instance.new("TextButton")
+placeToggle.Size = UDim2.new(0.48, 0, 0, 24)
+placeToggle.Position = UDim2.new(0, 0, 0, toggleY)
+placeToggle.BackgroundColor3 = C.btnStart
+placeToggle.Text = "🧱 Place: ON"
+placeToggle.TextColor3 = C.white
+placeToggle.TextSize = 11
+placeToggle.Font = Enum.Font.GothamBold
+placeToggle.BorderSizePixel = 0
+placeToggle.Parent = tabPnB
+Instance.new("UICorner", placeToggle).CornerRadius = UDim.new(0, 6)
+
+local breakToggle = Instance.new("TextButton")
+breakToggle.Size = UDim2.new(0.48, 0, 0, 24)
+breakToggle.Position = UDim2.new(0.52, 0, 0, toggleY)
+breakToggle.BackgroundColor3 = C.btnStart
+breakToggle.Text = "⛏️ Break: ON"
+breakToggle.TextColor3 = C.white
+breakToggle.TextSize = 11
+breakToggle.Font = Enum.Font.GothamBold
+breakToggle.BorderSizePixel = 0
+breakToggle.Parent = tabPnB
+Instance.new("UICorner", breakToggle).CornerRadius = UDim.new(0, 6)
+
+placeToggle.MouseButton1Click:Connect(function()
+    AutoPnB.ENABLE_PLACE = not AutoPnB.ENABLE_PLACE
+    if AutoPnB.ENABLE_PLACE then
+        placeToggle.Text = "🧱 Place: ON"
+        placeToggle.BackgroundColor3 = C.btnStart
+    else
+        placeToggle.Text = "🧱 Place: OFF"
+        placeToggle.BackgroundColor3 = C.btnGrey
+    end
+end)
+
+breakToggle.MouseButton1Click:Connect(function()
+    AutoPnB.ENABLE_BREAK = not AutoPnB.ENABLE_BREAK
+    if AutoPnB.ENABLE_BREAK then
+        breakToggle.Text = "⛏️ Break: ON"
+        breakToggle.BackgroundColor3 = C.btnStart
+    else
+        breakToggle.Text = "⛏️ Break: OFF"
+        breakToggle.BackgroundColor3 = C.btnGrey
+    end
+end)
+
+-- ═══════════════════════════════════════
 -- CONTROLS
 -- ═══════════════════════════════════════
 
-local ctrlY = 98 + gridTotal + 22
+local ctrlY = 98 + gridTotal + 50
 
 local startBtn = Instance.new("TextButton")
 startBtn.Size = UDim2.new(0.48, 0, 0, 28)
