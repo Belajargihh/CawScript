@@ -221,7 +221,7 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - Batch Blink Mode")
+    print("[DEBUG] Magnet loop started - Glide Hunt Mode")
     while Manager._collectRunning do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -232,7 +232,7 @@ local function magnetLoop()
                 local items = targetFolder:GetChildren()
                 local toCollect = {}
                 
-                -- 1. Scan semua item yang valid dalam satu pass
+                -- 1. Scan targets
                 for _, item in ipairs(items) do
                     local itemId = item:GetAttribute("id")
                     if itemId then
@@ -249,30 +249,48 @@ local function magnetLoop()
                                 end
                             end
                             if shouldCollect then
-                                table.insert(toCollect, item)
+                                table.insert(toCollect, {item = item, pos = item:GetPivot().Position})
                             end
                         end
                     end
                 end
                 
-                -- 2. Batch Blink: Visit semua item sekaligus tanpa balik-balik tengah jalan
+                -- 2. Glide Hunt: Samperin satu-satu pake gerakan halus (Glide)
                 if #toCollect > 0 then
                     local startCF = root.CFrame
-                    for _, item in ipairs(toCollect) do
+                    
+                    for _, data in ipairs(toCollect) do
                         if not Manager._collectRunning then break end
+                        
                         pcall(function()
-                            -- Teleport ke item (posisi saja biar rotasi gak pusing)
-                            root.CFrame = CFrame.new(item:GetPivot().Position) * root.CFrame.Rotation
-                            task.wait() -- Tunggu 1 frame (minimal delay)
+                            local targetPos = data.pos
+                            -- Glide ke item (3 phase biar gak instan amat)
+                            for i = 1, 3 do
+                                if not Manager._collectRunning then break end
+                                root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos) * root.CFrame.Rotation, i/3)
+                                task.wait(0.03)
+                            end
+                            
+                            -- Berhenti sebentar di item (Sangat penting buat registrasi server)
+                            task.wait(0.1) 
                         end)
                     end
-                    -- Balik ke posisi asal
-                    root.CFrame = startCF
-                    print("[MAGNET] Batch Collected " .. #toCollect .. " items")
+                    
+                    -- Balik ke posisi asal (Glide balik)
+                    if Manager._collectRunning then
+                        pcall(function()
+                            for i = 1, 3 do
+                                root.CFrame = root.CFrame:Lerp(startCF, i/3)
+                                task.wait(0.03)
+                            end
+                        end)
+                    end
+                    
+                    print("[MAGNET] Hunt Complete: " .. #toCollect .. " items")
                 end
             end
         end
-        task.wait(0.3) -- Loop interval
+        task.wait(0.5) -- Jeda antar hunting scan
     end
     print("[DEBUG] Magnet loop stopped")
 end
