@@ -1147,6 +1147,11 @@ local collectContent = createSection("🚜 Auto Collect Item")
 -- Langsung ke Slider Radius
 
 -- Range Slider
+local magSliderFrame = Instance.new("Frame")
+magSliderFrame.Size = UDim2.new(1, 0, 0, 30)
+magSliderFrame.BackgroundTransparency = 1
+magSliderFrame.Parent = collectContent
+
 local rangeLabel = Instance.new("TextLabel")
 rangeLabel.Size = UDim2.new(1, 0, 0, 16)
 rangeLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -1156,14 +1161,14 @@ rangeLabel.TextColor3 = C.dim
 rangeLabel.TextSize = 11
 rangeLabel.Font = Enum.Font.Gotham
 rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
-rangeLabel.Parent = collectContent
+rangeLabel.Parent = magSliderFrame
 
 local rangeSliderBg = Instance.new("Frame")
 rangeSliderBg.Size = UDim2.new(1, 0, 0, 4)
 rangeSliderBg.Position = UDim2.new(0, 0, 0, 18)
 rangeSliderBg.BackgroundColor3 = C.cellOff
 rangeSliderBg.BorderSizePixel = 0
-rangeSliderBg.Parent = collectContent
+rangeSliderBg.Parent = magSliderFrame
 Instance.new("UICorner", rangeSliderBg).CornerRadius = UDim.new(0, 2)
 
 local rangeSliderFill = Instance.new("Frame")
@@ -1178,7 +1183,7 @@ rangeSliderHit.Size = UDim2.new(1, 0, 0, 12)
 rangeSliderHit.Position = UDim2.new(0, 0, 0, 14)
 rangeSliderHit.BackgroundTransparency = 1
 rangeSliderHit.Text = ""
-rangeSliderHit.Parent = collectContent
+rangeSliderHit.Parent = magSliderFrame
 
 local rangeDrag = false
 rangeSliderHit.InputBegan:Connect(function(input)
