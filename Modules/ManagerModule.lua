@@ -148,6 +148,7 @@ local function dropLoop()
         end
 
         if Manager.DROP_IMAGE_ID == "" then
+            print("[DEBUG] Drop canceled: No item selected")
             Manager._dropRunning = false
             warn("[Manager] Auto Drop gagal: Item belum dipilih")
             break
@@ -220,11 +221,12 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
+    print("[DEBUG] Magnet loop started")
     while Manager._collectRunning do
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if root then
-            -- Cari item di workspace (Scan Folder khusus atau Root)
-            local itemsFolder = workspace:FindFirstChild("Items") or workspace:FindFirstChild("Drops")
+            -- Cari item di workspace
+            local itemsFolder = workspace:FindFirstChild("Items") or workspace:FindFirstChild("Drops") or workspace:FindFirstChild("DroppedItems")
             local targetFolder = itemsFolder or workspace
             
             for _, item in ipairs(targetFolder:GetChildren()) do

@@ -165,6 +165,7 @@ mainFrame.Position = UDim2.new(0, 20, 0.5, -TOTAL_H / 2)
 mainFrame.BackgroundColor3 = C.bg
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
+mainFrame.ClipsDescendants = true
 mainFrame.Parent = gui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
 
@@ -898,6 +899,13 @@ managerList.Padding = UDim.new(0, 10)
 managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Parent = tabManager
 
+local managerPadding = Instance.new("UIPadding")
+managerPadding.PaddingBottom = UDim.new(0, 20)
+managerPadding.PaddingLeft = UDim.new(0, 5)
+managerPadding.PaddingRight = UDim.new(0, 5)
+managerPadding.PaddingTop = UDim.new(0, 5)
+managerPadding.Parent = tabManager
+
 local function createSection(name)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 0) -- Height handled by AutomaticSize
@@ -1127,15 +1135,19 @@ dropToggle.Text = "OFF"
 dropToggle.TextColor3 = C.white
 dropToggle.TextSize = 12
 dropToggle.Font = Enum.Font.GothamBold
+dropToggle.ZIndex = 10
 dropToggle.Parent = dropContent
 Instance.new("UICorner", dropToggle).CornerRadius = UDim.new(0, 6)
 
 dropToggle.MouseButton1Click:Connect(function()
+    print("[DEBUG] Auto Drop Button Clicked!")
     if ManagerModule.isDropRunning() then
+        print("[DEBUG] Stopping Auto Drop")
         ManagerModule.stopDrop()
         dropToggle.Text = "OFF"
         dropToggle.BackgroundColor3 = C.btnGrey
     else
+        print("[DEBUG] Starting Auto Drop")
         ManagerModule.startDrop()
         dropToggle.Text = "ON"
         dropToggle.BackgroundColor3 = C.btnStart
@@ -1233,10 +1245,12 @@ sapToggle.Text = "OFF"
 sapToggle.TextColor3 = C.white
 sapToggle.TextSize = 10
 sapToggle.Font = Enum.Font.GothamBold
+sapToggle.ZIndex = 10
 sapToggle.Parent = sapToggleRow
 Instance.new("UICorner", sapToggle).CornerRadius = UDim.new(0, 4)
 
 sapToggle.MouseButton1Click:Connect(function()
+    print("[DEBUG] Sapling Filter Clicked")
     ManagerModule.COLLECT_SAPLING_ONLY = not ManagerModule.COLLECT_SAPLING_ONLY
     sapToggle.Text = ManagerModule.COLLECT_SAPLING_ONLY and "ON" or "OFF"
     sapToggle.BackgroundColor3 = ManagerModule.COLLECT_SAPLING_ONLY and C.accent or C.cellOff
@@ -1251,15 +1265,19 @@ collectToggle.Text = "OFF"
 collectToggle.TextColor3 = C.white
 collectToggle.TextSize = 12
 collectToggle.Font = Enum.Font.GothamBold
+collectToggle.ZIndex = 10
 collectToggle.Parent = collectContent
 Instance.new("UICorner", collectToggle).CornerRadius = UDim.new(0, 6)
 
 collectToggle.MouseButton1Click:Connect(function()
+    print("[DEBUG] Magnet Button Clicked!")
     if ManagerModule.isCollectRunning() then
+        print("[DEBUG] Stopping Magnet")
         ManagerModule.stopCollect()
         collectToggle.Text = "OFF"
         collectToggle.BackgroundColor3 = C.btnGrey
     else
+        print("[DEBUG] Starting Magnet")
         ManagerModule.startCollect()
         collectToggle.Text = "ON"
         collectToggle.BackgroundColor3 = C.btnStart
