@@ -223,42 +223,52 @@ local function magnetLoop()
     while Manager._collectRunning do
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if root then
-            -- Cari item di workspace
-            local items = workspace:FindFirstChild("Items")
-            local targetFolder = items or workspace
+            -- Cari item di workspace (Scan Folder khusus atau Root)
+            local itemsFolder = workspace:FindFirstChild("Items") or workspace:FindFirstChild("Drops")
+            local targetFolder = itemsFolder or workspace
             
             for _, item in ipairs(targetFolder:GetChildren()) do
                 if not Manager._collectRunning then break end
                 
-                -- Deteksi apakah ini item
-                if item:IsA("BasePart") or (item:IsA("Model") and item.PrimaryPart) then
-                    local pos = item:GetPivot().Position
-                    local dist = (pos - root.Position).Magnitude
+                -- Deteksi item: BasePart/Model yang bukan Map/Player
+                if (item:IsA("BasePart") or item:IsA("Model")) and item.Name ~= player.Name and item.Name ~= "Terrain" then
                     
-                    -- Grid-based Radius (1 grid = 4.5 studs)
-                    local maxStuds = Manager.COLLECT_RANGE * 4.5
+                    -- Cek metadata/attribute (itemID, Count, dll)
+                    local isItem = item:GetAttribute("itemID") or item:GetAttribute("Count") or item:FindFirstChild("TouchInterest")
                     
-                    if dist <= maxStuds then
-                        -- Filter Sapling Only jika aktif
-                        local shouldCollect = true
-                        if Manager.COLLECT_SAPLING_ONLY then
-                            local name = item.Name:lower()
-                            -- Cek nama atau attribute
-                            local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
-                            if not isSapling then
-                                shouldCollect = false
-                            end
-                        end
+                    -- Heuristic tambahan berdasarkan nama
+                    local name = item.Name:lower()
+                    if not isItem and (name:find("item") or name:find("block") or name:find("sapling") or name:find("seed")) then
+                        isItem = true
+                    end
 
-                        if shouldCollect then
-                            -- Teleport item ke player (Magnet)
-                            pcall(function()
-                                if item:IsA("BasePart") then
-                                    item.CFrame = root.CFrame
-                                else
-                                    item:PivotTo(root.CFrame)
+                    if isItem then
+                        local pos = item:GetPivot().Position
+                        local dist = (pos - root.Position).Magnitude
+                        
+                        -- Grid-based Radius (1 grid = 4.5 studs)
+                        local maxStuds = Manager.COLLECT_RANGE * 4.5
+                        
+                        if dist <= maxStuds then
+                            -- Filter Sapling Only jika aktif
+                            local shouldCollect = true
+                            if Manager.COLLECT_SAPLING_ONLY then
+                                local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
+                                if not isSapling then
+                                    shouldCollect = false
                                 end
-                            end)
+                            end
+
+                            if shouldCollect then
+                                -- Teleport item ke player (Magnet)
+                                pcall(function()
+                                    if item:IsA("BasePart") then
+                                        item.CFrame = root.CFrame
+                                    else
+                                        item:PivotTo(root.CFrame)
+                                    end
+                                end)
+                            end
                         end
                     end
                 end

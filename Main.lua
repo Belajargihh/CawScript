@@ -1150,6 +1150,7 @@ local collectContent = createSection("🚜 Auto Collect Item")
 local magSliderFrame = Instance.new("Frame")
 magSliderFrame.Size = UDim2.new(1, 0, 0, 30)
 magSliderFrame.BackgroundTransparency = 1
+magSliderFrame.LayoutOrder = 1
 magSliderFrame.Parent = collectContent
 
 local rangeLabel = Instance.new("TextLabel")
@@ -1208,8 +1209,8 @@ end)
 
 local sapToggleRow = Instance.new("Frame")
 sapToggleRow.Size = UDim2.new(1, 0, 0, 24)
-sapToggleRow.Position = UDim2.new(0, 0, 0, 32)
 sapToggleRow.BackgroundTransparency = 1
+sapToggleRow.LayoutOrder = 2
 sapToggleRow.Parent = collectContent
 
 local sapLabel = Instance.new("TextLabel")
@@ -1241,7 +1242,8 @@ end)
 
 local collectToggle = Instance.new("TextButton")
 collectToggle.Size = UDim2.new(1, 0, 0, 26)
-collectToggle.Position = UDim2.new(0, 0, 0, 64)
+collectToggle.BackgroundTransparency = 0
+collectToggle.LayoutOrder = 3
 collectToggle.BackgroundColor3 = C.btnGrey
 collectToggle.Text = "OFF"
 collectToggle.TextColor3 = C.white
