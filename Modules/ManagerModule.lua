@@ -221,53 +221,54 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - Sticky TP Mode")
+    print("[DEBUG] Magnet loop started - Batch Blink Mode")
     while Manager._collectRunning do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         
         if root then
             local targetFolder = workspace:FindFirstChild("Drops")
-            
             if targetFolder then
                 local items = targetFolder:GetChildren()
+                local toCollect = {}
+                
+                -- 1. Scan semua item yang valid dalam satu pass
                 for _, item in ipairs(items) do
-                    if not Manager._collectRunning then break end
-                    
-                    pcall(function()
-                        -- Item di game ini namanya kosong tapi punya attribute 'id'
-                        local itemId = item:GetAttribute("id")
-                        if itemId then
-                            local pos = item:GetPivot().Position
-                            local dist = (pos - root.Position).Magnitude
-                            local maxStuds = Manager.COLLECT_RANGE * 4.5
-                            
-                            if dist <= maxStuds then
-                                -- Filter Sapling Only
-                                local shouldCollect = true
-                                if Manager.COLLECT_SAPLING_ONLY then
-                                    local lowerId = tostring(itemId):lower()
-                                    local isSap = lowerId:find("sapling") or lowerId:find("seed")
-                                    if not isSap then shouldCollect = false end
-                                end
-
-                                if shouldCollect then
-                                    local oldCF = root.CFrame
-                                    local targetCF = item:GetPivot()
-                                    
-                                    -- STICKY TELEPORT: Diam di lokasi item 0.1 detik biar server yakin
-                                    root.CFrame = targetCF
-                                    task.wait(0.1) 
-                                    root.CFrame = oldCF
-                                    
-                                    print("[MAGNET] Sticky Collected: " .. tostring(itemId))
-                                    
-                                    -- JEDA ANTI-RUBBERBAND (Biar server gak curiga kita pindah-pindah terlalu cepet)
-                                    task.wait(0.2)
+                    local itemId = item:GetAttribute("id")
+                    if itemId then
+                        local pos = item:GetPivot().Position
+                        local dist = (pos - root.Position).Magnitude
+                        local maxStuds = Manager.COLLECT_RANGE * 4.5
+                        
+                        if dist <= maxStuds then
+                            local shouldCollect = true
+                            if Manager.COLLECT_SAPLING_ONLY then
+                                local lowerId = tostring(itemId):lower()
+                                if not (lowerId:find("sapling") or lowerId:find("seed")) then
+                                    shouldCollect = false
                                 end
                             end
+                            if shouldCollect then
+                                table.insert(toCollect, item)
+                            end
                         end
-                    end)
+                    end
+                end
+                
+                -- 2. Batch Blink: Visit semua item sekaligus tanpa balik-balik tengah jalan
+                if #toCollect > 0 then
+                    local startCF = root.CFrame
+                    for _, item in ipairs(toCollect) do
+                        if not Manager._collectRunning then break end
+                        pcall(function()
+                            -- Teleport ke item (posisi saja biar rotasi gak pusing)
+                            root.CFrame = CFrame.new(item:GetPivot().Position) * root.CFrame.Rotation
+                            task.wait() -- Tunggu 1 frame (minimal delay)
+                        end)
+                    end
+                    -- Balik ke posisi asal
+                    root.CFrame = startCF
+                    print("[MAGNET] Batch Collected " .. #toCollect .. " items")
                 end
             end
         end
