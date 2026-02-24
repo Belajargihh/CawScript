@@ -1,9 +1,10 @@
 --[[
-    PlayerModule.lua - Versi 5 (Module Hijack)
+    PlayerModule.lua - Versi 6 (Refined Hijack)
     
-    HIJACK STRATEGY:
-    Kita langsung mengambil data dari module "PlayerMovement" asli game
-    dan memanipulasi variabel di dalamnya (MaxJump, VelocityY, dll).
+    HIJACK STRATEGY V6:
+    - Sprint: Mengalikan VelocityX di dalam module game
+    - Zero Gravity: Hanya mengunci VelocityY jika TIDAK sedang melompat
+    - Infinite Jump: Tetap pakai MaxJump hijack
 ]]
 
 local PlayerModule = {}
@@ -20,13 +21,12 @@ local player = Players.LocalPlayer
 
 PlayerModule.GOD_MODE = false
 PlayerModule.SPRINT = false
-PlayerModule.SPRINT_SPEED = 32
+PlayerModule.SPRINT_SPEED = 32       -- WalkSpeed target (Roblox default 16)
 PlayerModule.ZERO_GRAVITY = false
 PlayerModule.INFINITE_JUMP = false
 
-local _gameModule = nil      -- Referensi ke module PlayerMovement asli
+local _gameModule = nil
 local _hookInstalled = false
-local _connections = {}
 
 -- ═══════════════════════════════════════
 -- HELPERS
@@ -34,7 +34,6 @@ local _connections = {}
 
 local function getGameMovementModule()
     if _gameModule then return _gameModule end
-    
     local modScript = player.PlayerScripts:FindFirstChild("PlayerMovement", true)
     if modScript and modScript:IsA("ModuleScript") then
         local success, content = pcall(require, modScript)
@@ -51,39 +50,8 @@ local function getRoot()
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
-local function getHumanoid()
-    local char = player.Character
-    return char and char:FindFirstChildOfClass("Humanoid")
-end
-
 -- ═══════════════════════════════════════
--- HOOKS
--- ═══════════════════════════════════════
-
-local function installHooks()
-    if _hookInstalled then return end
-    
-    -- God Mode Hook (Damage)
-    local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
-    local RemoteHurt = Remotes and Remotes:WaitForChild("PlayerHurtMe", 2)
-    
-    if RemoteHurt then
-        pcall(function()
-            local oldFire
-            oldFire = hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
-                if self == RemoteHurt and PlayerModule.GOD_MODE then
-                    return nil
-                end
-                return oldFire(self, ...)
-            end))
-        end)
-    end
-
-    _hookInstalled = true
-end
-
--- ═══════════════════════════════════════
--- MAIN LOOP (HIJACK LOGIC)
+-- MAIN LOOP
 -- ═══════════════════════════════════════
 
 local function startHijackLoop()
@@ -91,37 +59,40 @@ local function startHijackLoop()
         local mod = getGameMovementModule()
         if not mod then return end
         
-        -- 1. INFINITE JUMP HIJACK
+        -- 1. INFINITE JUMP
         if PlayerModule.INFINITE_JUMP then
             mod.MaxJump = 999
-            mod.RemainingJumps = 999
+            mod.RemainingJumps = math.max(mod.RemainingJumps or 0, 1)
         end
         
-        -- 2. ZERO GRAVITY / FLY HIJACK
+        -- 2. ZERO GRAVITY (Refined)
+        -- Hanya kunci VelocityY jika: aktif AND tidak sedang melompat AND sedang di udara
         if PlayerModule.ZERO_GRAVITY then
-            -- Paksa VelocityY di dalam module game menjadi 0
-            mod.VelocityY = 0
-            
-            -- Jika sedang tekan spasi, beri sedikit dorongan ke atas (Fly)
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then
-                mod.VelocityY = 10 -- Naik pelan
-            elseif UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
-                mod.VelocityY = -10 -- Turun pelan
+            if not mod.Jumping and not mod.Grounded then
+                mod.VelocityY = 0 -- Berhenti jatuh
             end
-            
-            -- Matikan gravitasi global juga
             workspace.Gravity = 0
+        else
+            -- Workspace gravity jangan dipaksa 0 jika OFF
+            -- (Tetapi biarkan sistem game sendiri yang handle)
         end
 
-        -- 3. SPRINT BYPASS (CFrame Shifting)
-        -- Tetap pakai CFrame shifting karena module game mungkin tidak punya variabel 'Speed' langsung
+        -- 3. SPRINT HIJACK (VelocityX Multiplier)
         if PlayerModule.SPRINT then
+            -- Jika kita terdeteksi sedang bergerak (VelocityX bukan 0)
+            if mod.VelocityX and math.abs(mod.VelocityX) > 0.1 then
+                local multiplier = PlayerModule.SPRINT_SPEED / 13 -- Base speed game sekitar 13
+                mod.VelocityX = mod.VelocityX * multiplier
+            end
+            
+            -- Fallback CFrame shifting jika VelocityX hijack kurang lancar
             local root = getRoot()
-            local hum = getHumanoid()
+            local char = player.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
             if root and hum and hum.MoveDirection.Magnitude > 0 then
-                local extraSpeed = (PlayerModule.SPRINT_SPEED / 16) - 1
-                if extraSpeed > 0 then
-                    root.CFrame = root.CFrame + (hum.MoveDirection * extraSpeed * 16 * dt)
+                local extra = (PlayerModule.SPRINT_SPEED / 13) - 1
+                if extra > 0 then
+                    root.CFrame = root.CFrame + (hum.MoveDirection * extra * 13 * dt)
                 end
             end
         end
@@ -134,10 +105,7 @@ end
 
 function PlayerModule.setSprint(state)
     PlayerModule.SPRINT = state
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = state and PlayerModule.SPRINT_SPEED or 16
-    end
+    print("[CawScript] Sprint: " .. (state and "ON" or "OFF"))
 end
 
 function PlayerModule.setSprintSpeed(speed)
@@ -147,42 +115,37 @@ end
 function PlayerModule.setZeroGravity(state)
     PlayerModule.ZERO_GRAVITY = state
     workspace.Gravity = state and 0 or 196.2
-    
-    -- Reset VelocityY saat dimatikan
-    if not state then
-        local mod = getGameMovementModule()
-        if mod then mod.VelocityY = 0 end
-    end
+    print("[CawScript] Zero Gravity: " .. (state and "ON" or "OFF"))
 end
 
 function PlayerModule.setInfiniteJump(state)
     PlayerModule.INFINITE_JUMP = state
-    
-    -- Reset ke default jika dimatikan
     if not state then
         local mod = getGameMovementModule()
-        if mod then
-            mod.MaxJump = 1
-        end
+        if mod then mod.MaxJump = 1 end
     end
 end
 
 -- ═══════════════════════════════════════
--- INITIALIZATION
+-- INIT
 -- ═══════════════════════════════════════
 
 function PlayerModule.init()
-    installHooks()
+    -- God Mode Hook
+    local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+    local RemoteHurt = Remotes and Remotes:WaitForChild("PlayerHurtMe", 2)
+    if RemoteHurt then
+        local old; old = hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
+            if self == RemoteHurt and PlayerModule.GOD_MODE then return nil end
+            return old(self, ...)
+        end))
+    end
+
     startHijackLoop()
-    print("[CawScript] PlayerModule V5 (Hijack) Initialized! ✅")
+    print("[CawScript] PlayerModule V6 (Refined) Initialized!")
 end
 
-function PlayerModule.setGodMode(state)
-    PlayerModule.GOD_MODE = state
-end
-
-function PlayerModule.isGodMode()
-    return PlayerModule.GOD_MODE
-end
+function PlayerModule.setGodMode(state) PlayerModule.GOD_MODE = state end
+function PlayerModule.isGodMode() return PlayerModule.GOD_MODE end
 
 return PlayerModule
