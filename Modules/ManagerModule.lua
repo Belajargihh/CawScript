@@ -221,18 +221,19 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - Glide Hunt Mode")
+    print("[DEBUG] Magnet loop started - Ghost Hunt Mode (Zero-G)")
     while Manager._collectRunning do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
         
-        if root then
+        if root and hum then
             local targetFolder = workspace:FindFirstChild("Drops")
             if targetFolder then
                 local items = targetFolder:GetChildren()
                 local toCollect = {}
                 
-                -- 1. Scan targets
+                -- 1. Scan targets based on attribute 'id'
                 for _, item in ipairs(items) do
                     local itemId = item:GetAttribute("id")
                     if itemId then
@@ -249,49 +250,48 @@ local function magnetLoop()
                                 end
                             end
                             if shouldCollect then
-                                table.insert(toCollect, {item = item, pos = item:GetPivot().Position})
+                                table.insert(toCollect, {item = item, pos = pos, id = itemId})
                             end
                         end
                     end
                 end
                 
-                -- 2. Glide Hunt: Samperin satu-satu pake gerakan halus (Glide)
+                -- 2. Ghost Hunt (Zero-G Flight)
                 if #toCollect > 0 then
-                    local startCF = root.CFrame
+                    -- Matikan gravitasi fisik biar nggak glitch
+                    hum.PlatformStand = true 
                     
                     for _, data in ipairs(toCollect) do
                         if not Manager._collectRunning then break end
+                        if not data.item.Parent then continue end -- Item udah ilang
+                        
+                        print("[MAGNET] Ghosting to: " .. tostring(data.id))
                         
                         pcall(function()
                             local targetPos = data.pos
-                            -- Glide ke item (3 phase biar gak instan amat)
-                            for i = 1, 3 do
+                            -- Move in 3D (Zero-G style)
+                            for i = 1, 5 do
                                 if not Manager._collectRunning then break end
-                                root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos) * root.CFrame.Rotation, i/3)
-                                task.wait(0.03)
+                                root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos) * root.CFrame.Rotation, i/5)
+                                root.Velocity = Vector3.new(0,0,0) -- Reset momentum
+                                task.wait(0.02)
                             end
-                            
-                            -- Berhenti sebentar di item (Sangat penting buat registrasi server)
-                            task.wait(0.1) 
+                            task.wait(0.05) -- Stabilize at item
                         end)
                     end
                     
-                    -- Balik ke posisi asal (Glide balik)
-                    if Manager._collectRunning then
-                        pcall(function()
-                            for i = 1, 3 do
-                                root.CFrame = root.CFrame:Lerp(startCF, i/3)
-                                task.wait(0.03)
-                            end
-                        end)
-                    end
-                    
-                    print("[MAGNET] Hunt Complete: " .. #toCollect .. " items")
+                    -- Balik ke Normal
+                    hum.PlatformStand = false
+                    print("[MAGNET] Ghost Hunt Complete")
                 end
             end
         end
-        task.wait(0.5) -- Jeda antar hunting scan
+        task.wait(0.3) -- Scan interval
     end
+    -- Reset state just in case
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = false end
     print("[DEBUG] Magnet loop stopped")
 end
 
