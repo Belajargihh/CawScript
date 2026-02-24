@@ -221,14 +221,13 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - Aggressive Mode")
+    print("[DEBUG] Magnet loop started - Touch Simulation Mode")
     while Manager._collectRunning do
         local char = player.Character
-        local head = char and char:FindFirstChild("Head")
         local root = char and char:FindFirstChild("HumanoidRootPart")
         
-        if head and root then
-            -- Cari folder Drops (DIAGNOSTIC UNGKAP INI TEMPATNYA)
+        if root then
+            -- Cari folder Drops
             local targetFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items") or workspace:FindFirstChild("DroppedItems")
             
             if targetFolder then
@@ -236,16 +235,11 @@ local function magnetLoop()
                 for _, item in ipairs(items) do
                     if not Manager._collectRunning then break end
                     
-                    -- Pake teleport paling paksa
                     pcall(function()
                         local pos = item:GetPivot().Position
                         local dist = (pos - root.Position).Magnitude
                         local maxStuds = Manager.COLLECT_RANGE * 4.5
                         
-                        -- Log tiap ketemu sesuatu di folder Drops (biar tau script jalan)
-                        print("[MAGNET] Found item in Drops: " .. tostring(item.Name) .. " | Dist: " .. math.floor(dist))
-
-
                         if dist <= maxStuds then
                             -- Filter Sapling Only
                             local shouldCollect = true
@@ -256,16 +250,20 @@ local function magnetLoop()
                             end
 
                             if shouldCollect then
-                                -- Pastikan tidak anchored biar mau gerak
-                                if item:IsA("BasePart") then
-                                    item.Anchored = false
-                                    item.CFrame = head.CFrame
+                                -- Trik Paling Jitu: firetouchinterest (Simulasi karakter nyentuh benda di server)
+                                local touch = item:FindFirstChildOfClass("TouchInterest")
+                                if firetouchinterest and touch then
+                                    firetouchinterest(root, item, 0) -- Touch start
+                                    task.wait()
+                                    firetouchinterest(root, item, 1) -- Touch end
+                                    print("[MAGNET] Fired touch for: " .. item.Name)
                                 else
-                                    -- Kalau model, unanchor semua part-nya
-                                    for _, p in ipairs(item:GetDescendants()) do
-                                        if p:IsA("BasePart") then p.Anchored = false end
+                                    -- Fallback: Teleport ke badan player (Kalau item punya Hitbox di server)
+                                    if item:IsA("BasePart") then
+                                        item.CFrame = root.CFrame
+                                    else
+                                        item:PivotTo(root.CFrame)
                                     end
-                                    item:PivotTo(head.CFrame)
                                 end
                             end
                         end
@@ -273,7 +271,7 @@ local function magnetLoop()
                 end
             end
         end
-        task.wait(0.1) -- Lebih cepet (10x per detik)
+        task.wait(0.2) -- Jeda biar gak spam server
     end
     print("[DEBUG] Magnet loop stopped")
 end
