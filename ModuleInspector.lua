@@ -81,11 +81,35 @@ output.TextXAlignment = Enum.TextXAlignment.Left
 output.TextYAlignment = Enum.TextYAlignment.Top
 output.Parent = scroll
 
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0.5, -15, 0, 30)
+copyBtn.Position = UDim2.new(0, 10, 1, -35)
+copyBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+copyBtn.Text = "COPY TO CLIPBOARD"
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.TextSize = 12
+copyBtn.Parent = bg
+Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
+
+copyBtn.MouseButton1Click:Connect(function()
+    local text = table.concat(results, "\n")
+    setclipboard(text)
+    copyBtn.Text = "COPIED!"
+    task.wait(2)
+    copyBtn.Text = "COPY TO CLIPBOARD"
+end)
+
 local close = Instance.new("TextButton")
-close.Size = UDim2.new(1, 0, 0, 30)
-close.Position = UDim2.new(0, 0, 1, -30)
+close.Size = UDim2.new(0.5, -15, 0, 30)
+close.Position = UDim2.new(0.5, 5, 1, -35)
+close.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 close.Text = "CLOSE"
+close.TextColor3 = Color3.fromRGB(255, 255, 255)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 12
 close.Parent = bg
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
 close.MouseButton1Click:Connect(function() gui:Destroy() end)
 
 print("Inspection complete. Check screen.")
