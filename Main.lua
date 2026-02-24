@@ -1224,65 +1224,165 @@ tabFrames[5] = createComingSoonTab(contentContainer, "Clear World")
 -- ═══════════════════════════════════════
 -- TAB 6: PLAYER
 -- ═══════════════════════════════════════
-local tabPlayer = Instance.new("Frame")
-tabPlayer.Size = UDim2.new(1, -20, 1, -10)
-tabPlayer.Position = UDim2.new(0, 10, 0, 5)
+local tabPlayer = Instance.new("ScrollingFrame")
+tabPlayer.Size = UDim2.new(1, -10, 1, -10)
+tabPlayer.Position = UDim2.new(0, 5, 0, 5)
 tabPlayer.BackgroundTransparency = 1
+tabPlayer.BorderSizePixel = 0
+tabPlayer.ScrollBarThickness = 2
 tabPlayer.Visible = false
+tabPlayer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabPlayer.CanvasSize = UDim2.new(0, 0, 0, 0)
 tabPlayer.Parent = contentContainer
 tabFrames[6] = tabPlayer
 
+local playerList = Instance.new("UIListLayout")
+playerList.Padding = UDim.new(0, 8)
+playerList.SortOrder = Enum.SortOrder.LayoutOrder
+playerList.Parent = tabPlayer
+
+-- Helper: Create a toggle row
+local function createPlayerToggle(parent, icon, label, order, onToggle)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 36)
+    frame.BackgroundColor3 = C.sidebar
+    frame.BorderSizePixel = 0
+    frame.LayoutOrder = order
+    frame.Parent = parent
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -80, 1, 0)
+    lbl.Position = UDim2.new(0, 12, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = icon .. " " .. label
+    lbl.TextColor3 = C.white
+    lbl.TextSize = 12
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+    
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 55, 0, 22)
+    toggle.Position = UDim2.new(1, -65, 0.5, -11)
+    toggle.BackgroundColor3 = C.btnGrey
+    toggle.Text = "OFF"
+    toggle.TextColor3 = C.white
+    toggle.TextSize = 11
+    toggle.Font = Enum.Font.GothamBold
+    toggle.BorderSizePixel = 0
+    toggle.Parent = frame
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 6)
+    
+    local isOn = false
+    toggle.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        onToggle(isOn)
+        if isOn then
+            toggle.Text = "ON"
+            toggle.BackgroundColor3 = C.btnStart
+        else
+            toggle.Text = "OFF"
+            toggle.BackgroundColor3 = C.btnGrey
+        end
+    end)
+    
+    return frame, toggle
+end
+
+-- Title
 local playerTitle = Instance.new("TextLabel")
-playerTitle.Size = UDim2.new(1, 0, 0, 24)
+playerTitle.Size = UDim2.new(1, -10, 0, 22)
 playerTitle.BackgroundTransparency = 1
 playerTitle.Text = "👤 Player Controls"
 playerTitle.TextColor3 = C.white
-playerTitle.TextSize = 16
+playerTitle.TextSize = 14
 playerTitle.Font = Enum.Font.GothamBold
 playerTitle.TextXAlignment = Enum.TextXAlignment.Left
+playerTitle.LayoutOrder = 0
 playerTitle.Parent = tabPlayer
 
-local godModeFrame = Instance.new("Frame")
-godModeFrame.Size = UDim2.new(1, 0, 0, 40)
-godModeFrame.Position = UDim2.new(0, 0, 0, 35)
-godModeFrame.BackgroundColor3 = C.sidebar
-godModeFrame.BorderSizePixel = 0
-godModeFrame.Parent = tabPlayer
-Instance.new("UICorner", godModeFrame).CornerRadius = UDim.new(0, 8)
+-- 1. God Mode
+createPlayerToggle(tabPlayer, "🛡️", "God Mode", 1, function(state)
+    PlayerModule.setGodMode(state)
+end)
 
-local godLabel = Instance.new("TextLabel")
-godLabel.Size = UDim2.new(0, 100, 1, 0)
-godLabel.Position = UDim2.new(0, 12, 0, 0)
-godLabel.BackgroundTransparency = 1
-godLabel.Text = "🛡️ God Mode"
-godLabel.TextColor3 = C.white
-godLabel.TextSize = 13
-godLabel.Font = Enum.Font.GothamBold
-godLabel.TextXAlignment = Enum.TextXAlignment.Left
-godLabel.Parent = godModeFrame
+-- 2. Sprint + Speed Slider
+local sprintFrame, sprintToggle = createPlayerToggle(tabPlayer, "🏃", "Sprint", 2, function(state)
+    PlayerModule.setSprint(state)
+end)
 
-local godToggle = Instance.new("TextButton")
-godToggle.Size = UDim2.new(0, 60, 0, 24)
-godToggle.Position = UDim2.new(1, -72, 0.5, -12)
-godToggle.BackgroundColor3 = C.btnGrey
-godToggle.Text = "OFF"
-godToggle.TextColor3 = C.white
-godToggle.TextSize = 12
-godToggle.Font = Enum.Font.GothamBold
-godToggle.Parent = godModeFrame
-Instance.new("UICorner", godToggle).CornerRadius = UDim.new(0, 6)
+-- Sprint Speed Slider
+local sprintSliderFrame = Instance.new("Frame")
+sprintSliderFrame.Size = UDim2.new(1, -10, 0, 40)
+sprintSliderFrame.BackgroundColor3 = C.sidebar
+sprintSliderFrame.BorderSizePixel = 0
+sprintSliderFrame.LayoutOrder = 3
+sprintSliderFrame.Parent = tabPlayer
+Instance.new("UICorner", sprintSliderFrame).CornerRadius = UDim.new(0, 8)
 
-godToggle.MouseButton1Click:Connect(function()
-    local newState = not PlayerModule.isGodMode()
-    PlayerModule.setGodMode(newState)
-    
-    if newState then
-        godToggle.Text = "ON"
-        godToggle.BackgroundColor3 = C.btnStart
-    else
-        godToggle.Text = "OFF"
-        godToggle.BackgroundColor3 = C.btnGrey
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(1, -20, 0, 18)
+speedLabel.Position = UDim2.new(0, 10, 0, 2)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed: 32"
+speedLabel.TextColor3 = C.dim
+speedLabel.TextSize = 11
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = sprintSliderFrame
+
+local speedSliderBg = Instance.new("Frame")
+speedSliderBg.Size = UDim2.new(1, -20, 0, 5)
+speedSliderBg.Position = UDim2.new(0, 10, 0, 24)
+speedSliderBg.BackgroundColor3 = C.cellOff
+speedSliderBg.BorderSizePixel = 0
+speedSliderBg.Parent = sprintSliderFrame
+Instance.new("UICorner", speedSliderBg).CornerRadius = UDim.new(0, 3)
+
+local speedSliderFill = Instance.new("Frame")
+speedSliderFill.Size = UDim2.new(0.32, 0, 1, 0)
+speedSliderFill.BackgroundColor3 = C.accent
+speedSliderFill.BorderSizePixel = 0
+speedSliderFill.Parent = speedSliderBg
+Instance.new("UICorner", speedSliderFill).CornerRadius = UDim.new(0, 3)
+
+local speedSliderHit = Instance.new("TextButton")
+speedSliderHit.Size = UDim2.new(1, 0, 0, 16)
+speedSliderHit.Position = UDim2.new(0, 10, 0, 18)
+speedSliderHit.BackgroundTransparency = 1
+speedSliderHit.Text = ""
+speedSliderHit.Parent = sprintSliderFrame
+
+local speedDrag = false
+speedSliderHit.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        speedDrag = true
     end
+end)
+UIS.InputChanged:Connect(function(input)
+    if speedDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local rel = math.clamp((input.Position.X - speedSliderBg.AbsolutePosition.X) / speedSliderBg.AbsoluteSize.X, 0, 1)
+        speedSliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        local val = math.max(math.floor(rel * 100), 16)
+        PlayerModule.setSprintSpeed(val)
+        speedLabel.Text = "Speed: " .. val
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        speedDrag = false
+    end
+end)
+
+-- 3. Zero Gravity / Fly
+createPlayerToggle(tabPlayer, "🪶", "Zero Gravity", 4, function(state)
+    PlayerModule.setZeroGravity(state)
+end)
+
+-- 4. Infinite Jump
+createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
+    PlayerModule.setInfiniteJump(state)
 end)
 
 -- ═══════════════════════════════════════
