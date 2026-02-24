@@ -26,8 +26,8 @@ local RemoteFist  = Remotes:WaitForChild("PlayerFist")
 -- ═══════════════════════════════════════
 
 AutoPnB.ITEM_ID      = 2       -- Item ID (2 = Dirt Block)
-AutoPnB.DELAY_PLACE  = 0.2     -- Jeda setelah place
-AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah punch
+AutoPnB.DELAY_PLACE  = 0.15    -- Jeda setelah place (dipercepat jadi 150ms)
+AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah punch (150ms)
 AutoPnB.DELAY_CYCLE  = 0.3     -- Jeda antar siklus penuh
 AutoPnB.ENABLE_PLACE = true     -- Toggle place ON/OFF
 AutoPnB.ENABLE_BREAK = true     -- Toggle break ON/OFF
