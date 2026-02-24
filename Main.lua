@@ -889,6 +889,8 @@ tabManager.BackgroundTransparency = 1
 tabManager.BorderSizePixel = 0
 tabManager.ScrollBarThickness = 2
 tabManager.Visible = false
+tabManager.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabManager.CanvasSize = UDim2.new(0, 0, 0, 0)
 tabManager.Parent = contentContainer
 
 local managerList = Instance.new("UIListLayout")

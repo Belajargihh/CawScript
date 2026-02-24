@@ -309,7 +309,7 @@ end
 function Manager.startCollect()
     if Manager._collectRunning then return end
     Manager._collectRunning = true
-    Manager._collectThread = task.spawn(collectLoop)
+    Manager._collectThread = task.spawn(magnetLoop)
 end
 
 function Manager.stopCollect()
