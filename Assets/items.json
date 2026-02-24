@@ -1,19 +1,64 @@
 {
     "items": [
-        { "id": 1,  "name": "Blank" },
-        { "id": 2,  "name": "Dirt Block" },
-        { "id": 3,  "name": "Dirt (Farmed)" },
-        { "id": 4,  "name": "Dirt Sapling" },
-        { "id": 5,  "name": "Stone Sapling" },
-        { "id": 6,  "name": "Stone Block" },
-        { "id": 7,  "name": "Wood Block" },
-        { "id": 8,  "name": "Wood Sapling" },
-        { "id": 9,  "name": "Sand Block" },
-        { "id": 10, "name": "Sand Sapling" },
-        { "id": 11, "name": "Glass Block" },
-        { "id": 12, "name": "Obsidian Block" },
-        { "id": 13, "name": "Obsidian Sapling" },
-        { "id": 14, "name": "Lava Block" },
-        { "id": 15, "name": "Lava Sapling" }
+        {
+            "id": 1,
+            "name": "Blank"
+        },
+        {
+            "id": 2,
+            "name": "Dirt Block"
+        },
+        {
+            "id": 3,
+            "name": "Dirt (Farmed)"
+        },
+        {
+            "id": 4,
+            "name": "Dirt"
+        },
+        {
+            "id": 5,
+            "name": "Stone Sapling"
+        },
+        {
+            "id": 6,
+            "name": "Stone Block"
+        },
+        {
+            "id": 7,
+            "name": "Wood Block"
+        },
+        {
+            "id": 8,
+            "name": "Wood Sapling"
+        },
+        {
+            "id": 9,
+            "name": "Sand Block"
+        },
+        {
+            "id": 10,
+            "name": "Sand Sapling"
+        },
+        {
+            "id": 11,
+            "name": "Glass Block"
+        },
+        {
+            "id": 12,
+            "name": "Obsidian Block"
+        },
+        {
+            "id": 13,
+            "name": "Obsidian Sapling"
+        },
+        {
+            "id": 14,
+            "name": "Lava Block"
+        },
+        {
+            "id": 15,
+            "name": "Lava Sapling"
+        }
     ]
 }

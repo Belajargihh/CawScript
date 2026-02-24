@@ -271,6 +271,8 @@ local tabs = {
     {icon = "📦", name = "Manager"},
     {icon = "🔄", name = "Rotasi"},
     {icon = "🤖", name = "Bot"},
+    {icon = "🌍", name = "Clear World"},
+    {icon = "👤", name = "Player"},
 }
 
 local tabButtons = {}
@@ -1159,6 +1161,8 @@ tabFrames[2] = tabManager
 
 tabFrames[3] = createComingSoonTab(contentContainer, "Rotasi")
 tabFrames[4] = createComingSoonTab(contentContainer, "Bot")
+tabFrames[5] = createComingSoonTab(contentContainer, "Clear World")
+tabFrames[6] = createComingSoonTab(contentContainer, "Player")
 
 -- ═══════════════════════════════════════
 -- REAL-TIME UPDATE LOOP
