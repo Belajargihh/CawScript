@@ -1,11 +1,11 @@
 --[[
     ItemScanner.lua
     Module for scanning and displaying all items in the world (Drops & Placed).
-    V3 - Data-Driven with Ultra Logging.
+    V3.1 - Fixed Stack counting & Table-based IDs.
 ]]
 
 local ItemScanner = {}
-ItemScanner.VERSION = "V3"
+ItemScanner.VERSION = "V3.1"
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -25,6 +25,9 @@ local STRING_MAP = {
     ["magma"] = "Magma Block",
     ["lava"] = "Lava Block",
     ["obsidian"] = "Obsidian Block",
+    ["glass_block"] = "Glass Block",
+    ["glass_pane"] = "Glass Pane",
+    ["green_block"] = "Green Block",
     ["dirt_sapling"] = "Dirt Sapling",
     ["stone_sapling"] = "Stone Sapling",
     ["wood_sapling"] = "Wood Sapling",
@@ -32,6 +35,20 @@ local STRING_MAP = {
 }
 
 local SPRITE_SHEET = "rbxassetid://77870053743502"
+
+-- ═══════════════════════════════════════
+-- HELPERS
+-- ═══════════════════════════════════════
+
+local function parseId(data)
+    if not data or data == "" or data == "none" or data == "air" then return nil end
+    if type(data) == "string" then return data end
+    if type(data) == "table" then
+        -- Heuristic for table-based IDs (common in Roblox systems)
+        return data.id or data.name or data.type or data[1] or tostring(data)
+    end
+    return tostring(data)
+end
 
 -- ═══════════════════════════════════════
 -- SCAN LOGIC
@@ -48,9 +65,11 @@ function ItemScanner.scan()
     
     local totalFound = 0
     
-    local function addCount(tbl, id, amt)
-        if not id or id == "" or id == "none" or id == "air" then return end
+    local function addCount(tbl, rawData, amt)
+        local id = parseId(rawData)
+        if not id then return end
         id = tostring(id):lower()
+        if id == "" or id:find("0x") then return end -- Filter memory addresses
         
         tbl[id] = (tbl[id] or 0) + (amt or 1)
         counts.total[id] = (counts.total[id] or 0) + (amt or 1)
@@ -60,48 +79,33 @@ function ItemScanner.scan()
     -- 1. Scan Placed Blocks (WorldTiles)
     local worldTilesMod = ReplicatedStorage:FindFirstChild("WorldTiles")
     if worldTilesMod then
-        print("[ITEMSCAN] Reading WorldTiles database...")
         local ok, data = pcall(require, worldTilesMod)
         if ok and type(data) == "table" then
-            local rowCount = 0
             for x, row in pairs(data) do
                 if type(row) == "table" then
-                    rowCount = rowCount + 1
                     for y, cell in pairs(row) do
                         if type(cell) == "table" then
-                            -- Foreground
-                            if cell[1] and cell[1] ~= "" then
-                                addCount(counts.placed, cell[1], 1)
-                            end
-                            -- Background
-                            if cell[2] and cell[2] ~= "" then
-                                addCount(counts.bg, cell[2], 1)
-                            end
+                            -- cell[1] = FG, cell[2] = BG
+                            addCount(counts.placed, cell[1], 1)
+                            addCount(counts.bg, cell[2], 1)
                         end
                     end
                 end
             end
-            print("[ITEMSCAN] Selesai baca WorldTiles. Ada " .. rowCount .. " baris data.")
-        else
-            warn("[ITEMSCAN] Gagal require WorldTiles: " .. tostring(data))
         end
-    else
-        warn("[ITEMSCAN] WorldTiles tidak ditemukan di ReplicatedStorage!")
     end
     
     -- 2. Scan Drops (Ground Items)
     local folderDrops = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items")
     if folderDrops then
-        print("[ITEMSCAN] Scanning Drops folder...")
-        local dropCount = 0
         for _, item in ipairs(folderDrops:GetDescendants()) do
             local id = item:GetAttribute("id") or item:GetAttribute("ItemId")
             if id then
-                addCount(counts.drops, id, 1)
-                dropCount = dropCount + 1
+                -- FIX: Count stack amount
+                local amount = item:GetAttribute("amount") or item:GetAttribute("count") or 1
+                addCount(counts.drops, id, amount)
             end
         end
-        print("[ITEMSCAN] Selesai scan Drops. Ditemukan " .. dropCount .. " item.")
     end
     
     print("[ITEMSCAN] Total Scan Selesai: " .. totalFound .. " objek ditemukan.")
@@ -131,7 +135,6 @@ function ItemScanner.showPopup(guiParent)
     
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 15)
     
-    -- Version Tag
     local vTag = Instance.new("TextLabel", frame)
     vTag.Size = UDim2.new(0, 40, 0, 20)
     vTag.Position = UDim2.new(0, 10, 0, 10)
@@ -181,33 +184,20 @@ function ItemScanner.showPopup(guiParent)
             if not c:IsA("UIListLayout") then c:Destroy() end
         end
         
-        local totalCount = 0
         local sorted = {}
         for id, num in pairs(counts.total) do
             table.insert(sorted, {id = id, count = num})
-            totalCount = totalCount + num
         end
         table.sort(sorted, function(a,b) return a.count > b.count end)
         
         local summary = Instance.new("TextLabel")
         summary.Size = UDim2.new(1, 0, 0, 20)
         summary.BackgroundTransparency = 1
-        summary.Text = string.format("Scan Selesai: %d objek | %d jenis unik", totalCount, #sorted)
+        summary.Text = string.format("Scan Selesai: %d jenis unik terdeteksi", #sorted)
         summary.TextColor3 = Color3.fromRGB(150, 150, 200)
         summary.TextSize = 12
         summary.Font = Enum.Font.Gotham
         summary.Parent = scroll
-        
-        if #sorted == 0 then
-            local empty = Instance.new("TextLabel")
-            empty.Size = UDim2.new(1, 0, 0, 150)
-            empty.BackgroundTransparency = 1
-            empty.Text = "0 OBJEK DITEMUKAN\n(Cek F9 untuk detail error)"
-            empty.TextColor3 = Color3.fromRGB(255, 100, 100)
-            empty.TextSize = 14
-            empty.Font = Enum.Font.GothamBold
-            empty.Parent = scroll
-        end
         
         for _, data in ipairs(sorted) do
             local row = Instance.new("Frame")
@@ -288,7 +278,6 @@ function ItemScanner.showPopup(guiParent)
     
     renderItems()
     
-    -- Draggable
     local dragging, dragStart, startPos
     title.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
