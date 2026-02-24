@@ -28,6 +28,9 @@ AutoPnB.init(Coordinates, Antiban)
 local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
 ManagerModule.init(Coordinates, Antiban, BackpackSync)
 
+local PlayerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/PlayerModule.lua" .. NOCACHE))()
+PlayerModule.init()
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
@@ -1214,7 +1217,70 @@ tabFrames[2] = tabManager
 tabFrames[3] = createComingSoonTab(contentContainer, "Rotasi")
 tabFrames[4] = createComingSoonTab(contentContainer, "Bot")
 tabFrames[5] = createComingSoonTab(contentContainer, "Clear World")
-tabFrames[6] = createComingSoonTab(contentContainer, "Player")
+
+-- ═══════════════════════════════════════
+-- TAB 6: PLAYER
+-- ═══════════════════════════════════════
+local tabPlayer = Instance.new("Frame")
+tabPlayer.Size = UDim2.new(1, -20, 1, -10)
+tabPlayer.Position = UDim2.new(0, 10, 0, 5)
+tabPlayer.BackgroundTransparency = 1
+tabPlayer.Visible = false
+tabPlayer.Parent = contentContainer
+tabFrames[6] = tabPlayer
+
+local playerTitle = Instance.new("TextLabel")
+playerTitle.Size = UDim2.new(1, 0, 0, 24)
+playerTitle.BackgroundTransparency = 1
+playerTitle.Text = "👤 Player Controls"
+playerTitle.TextColor3 = C.white
+playerTitle.TextSize = 16
+playerTitle.Font = Enum.Font.GothamBold
+playerTitle.TextXAlignment = Enum.TextXAlignment.Left
+playerTitle.Parent = tabPlayer
+
+local godModeFrame = Instance.new("Frame")
+godModeFrame.Size = UDim2.new(1, 0, 0, 40)
+godModeFrame.Position = UDim2.new(0, 0, 0, 35)
+godModeFrame.BackgroundColor3 = C.sidebar
+godModeFrame.BorderSizePixel = 0
+godModeFrame.Parent = tabPlayer
+Instance.new("UICorner", godModeFrame).CornerRadius = UDim.new(0, 8)
+
+local godLabel = Instance.new("TextLabel")
+godLabel.Size = UDim2.new(0, 100, 1, 0)
+godLabel.Position = UDim2.new(0, 12, 0, 0)
+godLabel.BackgroundTransparency = 1
+godLabel.Text = "🛡️ God Mode"
+godLabel.TextColor3 = C.white
+godLabel.TextSize = 13
+godLabel.Font = Enum.Font.GothamBold
+godLabel.TextXAlignment = Enum.TextXAlignment.Left
+godLabel.Parent = godModeFrame
+
+local godToggle = Instance.new("TextButton")
+godToggle.Size = UDim2.new(0, 60, 0, 24)
+godToggle.Position = UDim2.new(1, -72, 0.5, -12)
+godToggle.BackgroundColor3 = C.btnGrey
+godToggle.Text = "OFF"
+godToggle.TextColor3 = C.white
+godToggle.TextSize = 12
+godToggle.Font = Enum.Font.GothamBold
+godToggle.Parent = godModeFrame
+Instance.new("UICorner", godToggle).CornerRadius = UDim.new(0, 6)
+
+godToggle.MouseButton1Click:Connect(function()
+    local newState = not PlayerModule.isGodMode()
+    PlayerModule.setGodMode(newState)
+    
+    if newState then
+        godToggle.Text = "ON"
+        godToggle.BackgroundColor3 = C.btnStart
+    else
+        godToggle.Text = "OFF"
+        godToggle.BackgroundColor3 = C.btnGrey
+    end
+end)
 
 -- ═══════════════════════════════════════
 -- REAL-TIME UPDATE LOOP
