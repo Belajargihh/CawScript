@@ -225,59 +225,62 @@ local function magnetLoop()
     while Manager._collectRunning do
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if root then
-            -- Cari item di workspace
-            local itemsFolder = workspace:FindFirstChild("Items") or workspace:FindFirstChild("Drops") or workspace:FindFirstChild("DroppedItems")
-            local targetFolder = itemsFolder or workspace
+            -- Cari item di workspace (fokus ke folder Drops yang ditemukan di diagnosa)
+            local targetFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items") or workspace:FindFirstChild("DroppedItems") or workspace
             
-            for _, item in ipairs(targetFolder:GetChildren()) do
+            local items = targetFolder:GetChildren()
+            for _, item in ipairs(items) do
                 if not Manager._collectRunning then break end
                 
-                -- Deteksi item: BasePart/Model yang bukan Map/Player
-                if (item:IsA("BasePart") or item:IsA("Model")) and item.Name ~= player.Name and item.Name ~= "Terrain" then
-                    
-                    -- Cek metadata/attribute (itemID, Count, dll)
-                    local isItem = item:GetAttribute("itemID") or item:GetAttribute("Count") or item:FindFirstChild("TouchInterest")
-                    
-                    -- Heuristic tambahan berdasarkan nama
-                    local name = item.Name:lower()
-                    if not isItem and (name:find("item") or name:find("block") or name:find("sapling") or name:find("seed")) then
-                        isItem = true
-                    end
+                -- Skip non-physical objects
+                if not (item:IsA("BasePart") or item:IsA("Model")) then continue end
+                if item.Name == player.Name or item.Name == "Terrain" then continue end
+                
+                -- Deteksi item: Cek attribute atau TouchInterest
+                local isItem = item:GetAttribute("itemID") or item:GetAttribute("Count") or item:FindFirstChild("TouchInterest")
+                
+                -- Heuristic based on name
+                local name = item.Name:lower()
+                if not isItem and (name:find("item") or name:find("block") or name:find("sapling") or name:find("seed") or name:find("drop")) then
+                    isItem = true
+                end
 
-                    if isItem then
-                        local pos = item:GetPivot().Position
-                        local dist = (pos - root.Position).Magnitude
-                        
-                        -- Grid-based Radius (1 grid = 4.5 studs)
-                        local maxStuds = Manager.COLLECT_RANGE * 4.5
-                        
-                        if dist <= maxStuds then
-                            -- Filter Sapling Only jika aktif
-                            local shouldCollect = true
-                            if Manager.COLLECT_SAPLING_ONLY then
-                                local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
-                                if not isSapling then
-                                    shouldCollect = false
+                if isItem then
+                    local pos = item:GetPivot().Position
+                    local dist = (pos - root.Position).Magnitude
+                    
+                    -- Grid-based Radius (1 grid = 4.5 studs)
+                    local maxStuds = Manager.COLLECT_RANGE * 4.5
+                    
+                    if dist <= maxStuds then
+                        -- Filter Sapling Only jika aktif
+                        local shouldCollect = true
+                        if Manager.COLLECT_SAPLING_ONLY then
+                            local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
+                            if not isSapling then
+                                shouldCollect = false
+                            end
+                        end
+
+                        if shouldCollect then
+                            -- Teleport item ke player (Magnet)
+                            pcall(function()
+                                if item:IsA("BasePart") then
+                                    item.CFrame = root.CFrame + Vector3.new(0, 1, 0) -- Kasih offset dikit biar pasti kena hitbox
+                                else
+                                    item:PivotTo(root.CFrame + Vector3.new(0, 1, 0))
                                 end
-                            end
-
-                            if shouldCollect then
-                                -- Teleport item ke player (Magnet)
-                                pcall(function()
-                                    if item:IsA("BasePart") then
-                                        item.CFrame = root.CFrame
-                                    else
-                                        item:PivotTo(root.CFrame)
-                                    end
-                                end)
-                            end
+                            end)
                         end
                     end
                 end
             end
+        else
+            print("[DEBUG] Magnet paused: HumanoidRootPart not found")
         end
         task.wait(Manager.COLLECT_DELAY)
     end
+    print("[DEBUG] Magnet loop stopped")
 end
 
 -- ═══════════════════════════════════════
