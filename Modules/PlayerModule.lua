@@ -1,9 +1,9 @@
 --[[
-    PlayerModule.lua
-    Player features for custom-movement games.
+    PlayerModule.lua - Versi 4 (CFrame Bypass)
     
-    Karena game ini pakai custom movement (PlayerMovementPackets),
-    kita harus manipulasi fisik karakter secara langsung setiap frame.
+    Karena game ini menggunakan custom movement handler yang mengabaikan 
+    properti Humanoid (WalkSpeed/Gravity), kita akan menggunakan 
+    manipulasi CFrame dan Velocity secara paksa.
 ]]
 
 local PlayerModule = {}
@@ -20,20 +20,12 @@ local player = Players.LocalPlayer
 
 PlayerModule.GOD_MODE = false
 PlayerModule.SPRINT = false
-PlayerModule.SPRINT_SPEED = 32
+PlayerModule.SPRINT_SPEED = 32       -- Nilai ini akan jadi multiplier CFrame
 PlayerModule.ZERO_GRAVITY = false
 PlayerModule.INFINITE_JUMP = false
 
-local _defaultWalkSpeed = 16
-local _defaultJumpPower = 50
-local _defaultGravity = 196.2
 local _hookInstalled = false
-
--- Active connections
-local _sprintConn = nil
-local _zeroGravConn = nil
-local _jumpConn = nil
-local _bodyForce = nil
+local _connections = {}
 
 -- ═══════════════════════════════════════
 -- REMOTE REFERENCES
@@ -41,279 +33,152 @@ local _bodyForce = nil
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local RemoteHurt = Remotes and Remotes:WaitForChild("PlayerHurtMe", 2)
+local RemoteMoveProp = Remotes and Remotes:WaitForChild("PlayerSetMovementProperty", 2)
 
 -- ═══════════════════════════════════════
--- GOD MODE HOOK
+-- HOOKS
 -- ═══════════════════════════════════════
 
-local function installGodModeHook()
-    if not RemoteHurt then
-        warn("[CawScript] WARNING: Remote PlayerHurtMe tidak ditemukan!")
-        return
-    end
+local function installHooks()
     if _hookInstalled then return end
-
-    pcall(function()
-        local oldFire
-        oldFire = hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
-            if self == RemoteHurt and PlayerModule.GOD_MODE then
-                return nil
-            end
-            return oldFire(self, ...)
-        end))
-        _hookInstalled = true
-        print("[CawScript] God Mode hook installed!")
-    end)
-
-    if not _hookInstalled then
+    
+    -- 1. God Mode Hook (Damage)
+    if RemoteHurt then
         pcall(function()
-            local mt = getrawmetatable(game)
-            local oldNamecall = mt.__namecall
-            setreadonly(mt, false)
-            mt.__namecall = newcclosure(function(self, ...)
-                if self == RemoteHurt and getnamecallmethod() == "FireServer" and PlayerModule.GOD_MODE then
+            local oldFire
+            oldFire = hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
+                if self == RemoteHurt and PlayerModule.GOD_MODE then
                     return nil
                 end
-                return oldNamecall(self, ...)
-            end)
-            setreadonly(mt, true)
-            _hookInstalled = true
-            print("[CawScript] God Mode hook (mt) installed!")
-        end)
-    end
-
-    if not _hookInstalled then
-        pcall(function()
-            local old
-            old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-                if self == RemoteHurt and getnamecallmethod() == "FireServer" and PlayerModule.GOD_MODE then
-                    return nil
-                end
-                return old(self, ...)
+                return oldFire(self, ...)
             end))
-            _hookInstalled = true
-            print("[CawScript] God Mode hook (hmm) installed!")
         end)
     end
+    
+    -- 2. Movement Property Hook (Anti-Slow/Anti-Reset)
+    -- Jika server mencoba meriset posisi atau speed kita lewat remote ini
+    if RemoteMoveProp then
+        pcall(function()
+            local oldFire
+            oldFire = hookfunction(RemoteMoveProp.FireServer, newcclosure(function(self, ...)
+                if PlayerModule.SPRINT or PlayerModule.ZERO_GRAVITY then
+                    -- Mungkin kita perlu blokir jika ini menyebabkan rubberband
+                    -- return nil 
+                end
+                return oldFire(self, ...)
+            end))
+        end)
+    end
+
+    _hookInstalled = true
 end
 
 -- ═══════════════════════════════════════
--- HELPER
+-- HELPERS
 -- ═══════════════════════════════════════
+
+local function getRoot()
+    local char = player.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
 
 local function getHumanoid()
     local char = player.Character
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
-local function getRootPart()
-    local char = player.Character
-    return char and char:FindFirstChild("HumanoidRootPart")
+-- ═══════════════════════════════════════
+-- CORE LOOP (Heartbeat)
+-- Menggunakan manipulasi fisik langsung yang menembus script custom
+-- ═══════════════════════════════════════
+
+local function startMovementLoop()
+    RunService.Heartbeat:Connect(function(dt)
+        local root = getRoot()
+        local hum = getHumanoid()
+        if not root or not hum then return end
+
+        -- 1. SPRINT BYPASS (CFrame Shifting)
+        if PlayerModule.SPRINT and hum.MoveDirection.Magnitude > 0 then
+            -- Hitung berapa banyak kita harus 'dorong' CFrame-nya
+            -- SPRINT_SPEED di sini bertindak sebagai multiplier tambahan
+            local extraSpeed = (PlayerModule.SPRINT_SPEED / 16) - 1
+            if extraSpeed > 0 then
+                root.CFrame = root.CFrame + (hum.MoveDirection * extraSpeed * 16 * dt)
+            end
+        end
+
+        -- 2. ZERO GRAVITY / FLY BYPASS
+        if PlayerModule.ZERO_GRAVITY then
+            -- Matikan gravitasi secara paksa tiap frame
+            local velocity = root.Velocity
+            root.Velocity = Vector3.new(velocity.X, 0, velocity.Z)
+            
+            -- Lock posisi Y supaya melayang sempurna
+            -- Kecuali jika sedang lompat manual
+            if not UIS:IsKeyDown(Enum.KeyCode.Space) then
+                -- Kita bisa tambahkan sedikit gaya angkat jika perlu
+                -- root.Velocity = Vector3.new(velocity.X, 0.5, velocity.Z)
+            end
+        end
+    end)
 end
 
 -- ═══════════════════════════════════════
--- SPRINT
--- Strategi: Force WalkSpeed + JumpPower setiap Heartbeat
--- DAN juga coba gerak CFrame langsung
+-- PUBLIC ACTIONS
 -- ═══════════════════════════════════════
 
 function PlayerModule.setSprint(state)
     PlayerModule.SPRINT = state
-    
-    if state then
-        local hum = getHumanoid()
-        if hum then
-            _defaultWalkSpeed = hum.WalkSpeed
-        end
-        
-        -- Disconnect old
-        if _sprintConn then _sprintConn:Disconnect() end
-        
-        _sprintConn = RunService.Heartbeat:Connect(function()
-            if not PlayerModule.SPRINT then return end
-            local hum = getHumanoid()
-            if hum then
-                hum.WalkSpeed = PlayerModule.SPRINT_SPEED
-            end
-        end)
-        
-        print("[CawScript] Sprint ON — Speed: " .. PlayerModule.SPRINT_SPEED)
-    else
-        if _sprintConn then
-            _sprintConn:Disconnect()
-            _sprintConn = nil
-        end
-        local hum = getHumanoid()
-        if hum then
-            hum.WalkSpeed = _defaultWalkSpeed
-        end
-        print("[CawScript] Sprint OFF")
+    -- Kita juga tetap set WalkSpeed sebagai layer dasar
+    local hum = getHumanoid()
+    if hum then
+        hum.WalkSpeed = state and PlayerModule.SPRINT_SPEED or 16
     end
+    print("[CawScript] Sprint: " .. (state and "ON" or "OFF"))
 end
 
 function PlayerModule.setSprintSpeed(speed)
     PlayerModule.SPRINT_SPEED = speed
 end
 
--- ═══════════════════════════════════════
--- ZERO GRAVITY / FLY
--- Strategi multi-layer:
--- 1. workspace.Gravity = 0
--- 2. BodyForce untuk counteract gravity
--- 3. RenderStepped: force Velocity.Y = 0
--- 4. Noclip (set CanCollide false agar tembus)
--- ═══════════════════════════════════════
-
 function PlayerModule.setZeroGravity(state)
     PlayerModule.ZERO_GRAVITY = state
-    
-    if state then
-        -- Layer 1: workspace gravity
-        _defaultGravity = workspace.Gravity
-        workspace.Gravity = 0
-        
-        -- Layer 2: BodyForce untuk counteract sisa gravitasi
-        local rootPart = getRootPart()
-        if rootPart then
-            -- Remove old
-            local old = rootPart:FindFirstChild("CawAntiGrav")
-            if old then old:Destroy() end
-            
-            -- BodyForce counteract gravity
-            local bf = Instance.new("BodyForce")
-            bf.Name = "CawAntiGrav"
-            local char = player.Character
-            local mass = 0
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    mass = mass + part:GetMass()
-                end
-            end
-            bf.Force = Vector3.new(0, mass * _defaultGravity, 0)
-            bf.Parent = rootPart
-            _bodyForce = bf
-        end
-        
-        -- Layer 3: RenderStepped — force Velocity.Y = 0 dan noclip
-        if _zeroGravConn then _zeroGravConn:Disconnect() end
-        _zeroGravConn = RunService.RenderStepped:Connect(function()
-            if not PlayerModule.ZERO_GRAVITY then return end
-            local rootPart = getRootPart()
-            if rootPart then
-                -- Kill vertical velocity (keep floating)
-                local vel = rootPart.Velocity
-                rootPart.Velocity = Vector3.new(vel.X, 0, vel.Z)
-            end
-        end)
-        
-        print("[CawScript] Zero Gravity ON")
-    else
-        -- Restore
-        workspace.Gravity = _defaultGravity
-        
-        -- Remove BodyForce
-        if _bodyForce then
-            _bodyForce:Destroy()
-            _bodyForce = nil
-        end
-        local rootPart = getRootPart()
-        if rootPart then
-            local old = rootPart:FindFirstChild("CawAntiGrav")
-            if old then old:Destroy() end
-        end
-        
-        -- Disconnect render loop
-        if _zeroGravConn then
-            _zeroGravConn:Disconnect()
-            _zeroGravConn = nil
-        end
-        
-        print("[CawScript] Zero Gravity OFF")
-    end
-end
-
--- ═══════════════════════════════════════
--- INFINITE JUMP
--- Strategi: Multiple approaches sekaligus
--- 1. JumpRequest hook
--- 2. Force Humanoid state
--- 3. Apply upward Velocity langsung
--- ═══════════════════════════════════════
-
-local function setupInfiniteJump()
-    -- Method 1: JumpRequest
-    _jumpConn = UIS.JumpRequest:Connect(function()
-        if PlayerModule.INFINITE_JUMP then
-            local hum = getHumanoid()
-            local rootPart = getRootPart()
-            
-            if hum then
-                -- Force enable jumping state
-                pcall(function()
-                    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                end)
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-            
-            -- Langsung apply velocity ke atas
-            if rootPart then
-                local jumpForce = hum and hum.JumpPower or 50
-                rootPart.Velocity = Vector3.new(
-                    rootPart.Velocity.X,
-                    jumpForce,
-                    rootPart.Velocity.Z
-                )
-            end
-        end
-    end)
+    -- Set workspace gravity juga sebagai layer dasar
+    workspace.Gravity = state and 0 or 196.2
+    print("[CawScript] Zero Gravity: " .. (state and "ON" or "OFF"))
 end
 
 function PlayerModule.setInfiniteJump(state)
     PlayerModule.INFINITE_JUMP = state
-    
-    -- Juga force enable jump state di Humanoid
-    if state then
-        local hum = getHumanoid()
-        if hum then
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            end)
-        end
-    end
-    
-    print("[CawScript] Infinite Jump: " .. (state and "ON" or "OFF"))
 end
 
 -- ═══════════════════════════════════════
--- INIT
+-- INITIALIZATION
 -- ═══════════════════════════════════════
 
 function PlayerModule.init()
-    print("[CawScript] PlayerModule initializing...")
+    installHooks()
+    startMovementLoop()
     
-    installGodModeHook()
-    setupInfiniteJump()
-    
-    -- Handle respawn
-    player.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        
-        if PlayerModule.SPRINT then
-            local hum = char:WaitForChild("Humanoid", 5)
-            if hum then _defaultWalkSpeed = hum.WalkSpeed end
-        end
-        
-        if PlayerModule.ZERO_GRAVITY then
-            PlayerModule.setZeroGravity(true)
+    -- Infinite Jump Logic
+    UIS.JumpRequest:Connect(function()
+        if PlayerModule.INFINITE_JUMP then
+            local hum = getHumanoid()
+            local root = getRoot()
+            if hum and root then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                -- Langsung inject velocity ke atas
+                root.Velocity = Vector3.new(root.Velocity.X, hum.JumpPower * 1.5, root.Velocity.Z)
+            end
         end
     end)
     
-    print("[CawScript] PlayerModule initialized! ✅")
+    print("[CawScript] PlayerModule V4 (Bypass) Initialized!")
 end
 
 function PlayerModule.setGodMode(state)
     PlayerModule.GOD_MODE = state
-    print("[CawScript] God Mode: " .. (state and "ON" or "OFF"))
 end
 
 function PlayerModule.isGodMode()
