@@ -221,14 +221,13 @@ end
 -- ═══════════════════════════════════════
 
 local function magnetLoop()
-    print("[DEBUG] Magnet loop started - God Magnet Mode")
+    print("[DEBUG] Magnet loop started - Sticky TP Mode")
     while Manager._collectRunning do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         
         if root then
-            -- Cari folder Drops
-            local targetFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items") or workspace:FindFirstChild("DroppedItems")
+            local targetFolder = workspace:FindFirstChild("Drops")
             
             if targetFolder then
                 local items = targetFolder:GetChildren()
@@ -236,45 +235,43 @@ local function magnetLoop()
                     if not Manager._collectRunning then break end
                     
                     pcall(function()
-                        local pos = item:GetPivot().Position
-                        local dist = (pos - root.Position).Magnitude
-                        local maxStuds = Manager.COLLECT_RANGE * 4.5
-                        
-                        if dist <= maxStuds then
-                            -- Filter Sapling Only
-                            local shouldCollect = true
-                            if Manager.COLLECT_SAPLING_ONLY then
-                                local name = item.Name:lower()
-                                local isSap = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
-                                if not isSap then shouldCollect = false end
-                            end
-
-                            if shouldCollect then
-                                -- STRATEGI GOD MAGNET: Kita samperin item-nya beneran tapi super cepet
-                                local oldCF = root.CFrame
-                                local targetCF = item:GetPivot()
-                                
-                                -- 1. Coba firetouchinterest dulu (kalo ada)
-                                local touch = item:FindFirstChildOfClass("TouchInterest")
-                                if firetouchinterest and touch then
-                                    firetouchinterest(root, item, 0)
-                                    task.wait()
-                                    firetouchinterest(root, item, 1)
+                        -- Item di game ini namanya kosong tapi punya attribute 'id'
+                        local itemId = item:GetAttribute("id")
+                        if itemId then
+                            local pos = item:GetPivot().Position
+                            local dist = (pos - root.Position).Magnitude
+                            local maxStuds = Manager.COLLECT_RANGE * 4.5
+                            
+                            if dist <= maxStuds then
+                                -- Filter Sapling Only
+                                local shouldCollect = true
+                                if Manager.COLLECT_SAPLING_ONLY then
+                                    local lowerId = tostring(itemId):lower()
+                                    local isSap = lowerId:find("sapling") or lowerId:find("seed")
+                                    if not isSap then shouldCollect = false end
                                 end
-                                
-                                -- 2. Teleport Player ke Item (Biar server yakin kita nyentuh)
-                                root.CFrame = targetCF
-                                task.wait(0.05) -- Berhenti sebentar di item (50ms)
-                                root.CFrame = oldCF -- Balik ke posisi asal
-                                
-                                print("[MAGNET] God Collected: " .. item.Name)
+
+                                if shouldCollect then
+                                    local oldCF = root.CFrame
+                                    local targetCF = item:GetPivot()
+                                    
+                                    -- STICKY TELEPORT: Diam di lokasi item 0.1 detik biar server yakin
+                                    root.CFrame = targetCF
+                                    task.wait(0.1) 
+                                    root.CFrame = oldCF
+                                    
+                                    print("[MAGNET] Sticky Collected: " .. tostring(itemId))
+                                    
+                                    -- JEDA ANTI-RUBBERBAND (Biar server gak curiga kita pindah-pindah terlalu cepet)
+                                    task.wait(0.2)
+                                end
                             end
                         end
                     end)
                 end
             end
         end
-        task.wait(0.3) -- Jeda biar gak pusing karakternya kedip-kedip
+        task.wait(0.3) -- Loop interval
     end
     print("[DEBUG] Magnet loop stopped")
 end
