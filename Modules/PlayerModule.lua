@@ -51,48 +51,58 @@ local function getRoot()
 end
 
 -- ═══════════════════════════════════════
--- MAIN LOOP
+-- MAIN LOOP (HIJACK LOGIC V7)
 -- ═══════════════════════════════════════
+
+local _lockY = nil
 
 local function startHijackLoop()
     RunService.Heartbeat:Connect(function(dt)
         local mod = getGameMovementModule()
         if not mod then return end
         
-        -- 1. INFINITE JUMP
+        -- 1. INFINITE JUMP HIJACK
         if PlayerModule.INFINITE_JUMP then
             mod.MaxJump = 999
             mod.RemainingJumps = math.max(mod.RemainingJumps or 0, 1)
         end
         
-        -- 2. ZERO GRAVITY (Refined)
-        -- Hanya kunci VelocityY jika: aktif AND tidak sedang melompat AND sedang di udara
+        -- 2. ZERO GRAVITY / FLY HIJACK (Refined)
         if PlayerModule.ZERO_GRAVITY then
+            -- Berhenti jatuh total dengan mengunci posisi Y
             if not mod.Jumping and not mod.Grounded then
-                mod.VelocityY = 0 -- Berhenti jatuh
+                mod.VelocityY = 0
+                
+                local root = getRoot()
+                if root then
+                    -- Simpan posisi Y saat mulai melayang
+                    if not _lockY then _lockY = root.Position.Y end
+                    
+                    -- Paksa posisi Y diam di tempat
+                    root.CFrame = CFrame.new(root.Position.X, _lockY, root.Position.Z) * root.CFrame.Rotation
+                    root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
+                end
+            else
+                -- Jika sedang lompat atau di tanah, jangan lock Y
+                _lockY = nil
             end
             workspace.Gravity = 0
         else
-            -- Workspace gravity jangan dipaksa 0 jika OFF
-            -- (Tetapi biarkan sistem game sendiri yang handle)
+            _lockY = nil
         end
 
-        -- 3. SPRINT HIJACK (VelocityX Multiplier)
+        -- 3. SPRINT HIJACK (Smoother)
         if PlayerModule.SPRINT then
-            -- Jika kita terdeteksi sedang bergerak (VelocityX bukan 0)
-            if mod.VelocityX and math.abs(mod.VelocityX) > 0.1 then
-                local multiplier = PlayerModule.SPRINT_SPEED / 13 -- Base speed game sekitar 13
-                mod.VelocityX = mod.VelocityX * multiplier
-            end
-            
-            -- Fallback CFrame shifting jika VelocityX hijack kurang lancar
             local root = getRoot()
-            local char = player.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hum = getHumanoid()
             if root and hum and hum.MoveDirection.Magnitude > 0 then
-                local extra = (PlayerModule.SPRINT_SPEED / 13) - 1
-                if extra > 0 then
-                    root.CFrame = root.CFrame + (hum.MoveDirection * extra * 13 * dt)
+                -- Gunakan multiplier yang lebih masuk akal (max 3x)
+                local targetSpeed = math.clamp(PlayerModule.SPRINT_SPEED, 16, 50)
+                local extraSpeed = (targetSpeed / 13) - 1
+                
+                if extraSpeed > 0 then
+                    -- Pindahkan CFrame secara halus
+                    root.CFrame = root.CFrame + (hum.MoveDirection * extraSpeed * 13 * dt)
                 end
             end
         end
@@ -115,6 +125,7 @@ end
 function PlayerModule.setZeroGravity(state)
     PlayerModule.ZERO_GRAVITY = state
     workspace.Gravity = state and 0 or 196.2
+    _lockY = nil
     print("[CawScript] Zero Gravity: " .. (state and "ON" or "OFF"))
 end
 
@@ -135,14 +146,18 @@ function PlayerModule.init()
     local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
     local RemoteHurt = Remotes and Remotes:WaitForChild("PlayerHurtMe", 2)
     if RemoteHurt then
-        local old; old = hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
-            if self == RemoteHurt and PlayerModule.GOD_MODE then return nil end
-            return old(self, ...)
-        end))
+        local success, old = pcall(function()
+            return hookfunction(RemoteHurt.FireServer, newcclosure(function(self, ...)
+                if self == RemoteHurt and PlayerModule.GOD_MODE then return nil end
+                -- Use old namecall/metamethod if hookfunction fails or just return original
+                -- but for now we expect old to be returned by hookfunction.
+                -- However, in some envs hookfunction returns the original func.
+            end))
+        end)
     end
 
     startHijackLoop()
-    print("[CawScript] PlayerModule V6 (Refined) Initialized!")
+    print("[CawScript] PlayerModule V7 (Refined) Initialized!")
 end
 
 function PlayerModule.setGodMode(state) PlayerModule.GOD_MODE = state end

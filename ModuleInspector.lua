@@ -20,7 +20,10 @@ local function deepInspect(name, tbl, level)
         
         if valType == "table" then
             table.insert(results, indent .. "[TABLE] " .. keyStr)
-            deepInspect(keyStr, v, level + 1)
+            -- Bongkar isi Attributes agar terlihat datanya
+            if keyStr == "Attributes" or keyStr == "Config" or level < 2 then
+                deepInspect(keyStr, v, level + 1)
+            end
         elseif valType == "function" then
             table.insert(results, indent .. "[FUNCTION] " .. keyStr)
         else

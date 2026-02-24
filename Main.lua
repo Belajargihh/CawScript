@@ -151,8 +151,8 @@ gui.Parent = guiParent
 -- MAIN FRAME
 -- ═══════════════════════════════════════
 
-local SIDEBAR_W = 50
-local CONTENT_W = 260
+local SIDEBAR_W = 110
+local CONTENT_W = 280
 local TOTAL_W = SIDEBAR_W + CONTENT_W
 local TOTAL_H = 460
 
@@ -287,22 +287,49 @@ local activeTab = 1
 
 -- Create tab buttons
 for i, tab in ipairs(tabs) do
+    -- Side Button Container (for padding)
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Size = UDim2.new(1, 0, 0, 40)
+    btnContainer.Position = UDim2.new(0, 0, 0, (i - 1) * 42 + 10)
+    btnContainer.BackgroundTransparency = 1
+    btnContainer.Parent = sidebar
+    
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, SIDEBAR_W)
-    btn.Position = UDim2.new(0, 0, 0, (i - 1) * SIDEBAR_W)
+    btn.Size = UDim2.new(1, -10, 1, 0)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.BackgroundColor3 = C.sideHover
     btn.BackgroundTransparency = 1
-    btn.Text = tab.icon
-    btn.TextSize = 20
-    btn.Font = Enum.Font.GothamBold
-    btn.TextColor3 = C.sideText
+    btn.Text = ""
     btn.BorderSizePixel = 0
-    btn.Parent = sidebar
+    btn.Parent = btnContainer
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 30, 1, 0)
+    icon.Position = UDim2.new(0, 5, 0, 0)
+    icon.BackgroundTransparency = 1
+    icon.Text = tab.icon
+    icon.TextSize = 18
+    icon.TextColor3 = C.sideText
+    icon.Font = Enum.Font.GothamBold
+    icon.Parent = btn
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -40, 1, 0)
+    label.Position = UDim2.new(0, 35, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = tab.name
+    label.TextSize = 12
+    label.TextColor3 = C.sideText
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = btn
     
     -- Active indicator (left bar)
     local indicator = Instance.new("Frame")
     indicator.Name = "Indicator"
-    indicator.Size = UDim2.new(0, 3, 0, 24)
-    indicator.Position = UDim2.new(0, 0, 0.5, -12)
+    indicator.Size = UDim2.new(0, 3, 0, 20)
+    indicator.Position = UDim2.new(0, -2, 0.5, -10)
     indicator.BackgroundColor3 = C.sideActive
     indicator.BorderSizePixel = 0
     indicator.Visible = (i == 1)
@@ -310,15 +337,18 @@ for i, tab in ipairs(tabs) do
     Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 2)
     
     btn.MouseButton1Click:Connect(function()
-        -- Switch tab
         activeTab = i
         for j, f in ipairs(tabFrames) do
             f.Visible = (j == i)
         end
         for j, b in ipairs(tabButtons) do
             local ind = b:FindFirstChild("Indicator")
+            local ic = b:FindFirstChildWhichIsA("TextLabel")
+            local lb = b:FindFirstChild("TextLabel", true)
             if ind then ind.Visible = (j == i) end
-            b.TextColor3 = (j == i) and C.white or C.sideText
+            if ic then ic.TextColor3 = (j == i) and C.white or C.sideText end
+            if lb then lb.TextColor3 = (j == i) and C.white or C.sideText end
+            b.BackgroundTransparency = (j == i) and 0.8 or 1
         end
     end)
     
@@ -326,7 +356,9 @@ for i, tab in ipairs(tabs) do
 end
 
 -- Set first tab active
-tabButtons[1].TextColor3 = C.white
+tabButtons[1].BackgroundTransparency = 0.8
+tabButtons[1]:FindFirstChildWhichIsA("TextLabel").TextColor3 = C.white
+tabButtons[1]:FindFirstChild("TextLabel", true).TextColor3 = C.white
 
 -- ═══════════════════════════════════════
 -- CONTENT CONTAINER
@@ -402,13 +434,36 @@ end
 -- TAB 1: AUTO PnB
 -- ═══════════════════════════════════════
 
-local tabPnB = Instance.new("Frame")
-tabPnB.Size = UDim2.new(1, -20, 1, -10)
-tabPnB.Position = UDim2.new(0, 10, 0, 5)
+local tabPnB = Instance.new("ScrollingFrame")
+tabPnB.Size = UDim2.new(1, -10, 1, -10)
+tabPnB.Position = UDim2.new(0, 5, 0, 5)
 tabPnB.BackgroundTransparency = 1
+tabPnB.BorderSizePixel = 0
+tabPnB.ScrollBarThickness = 2
 tabPnB.Visible = true
+tabPnB.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabPnB.CanvasSize = UDim2.new(0, 0, 0, 0)
 tabPnB.Parent = contentContainer
 tabFrames[1] = tabPnB
+
+local pnbList = Instance.new("UIListLayout")
+pnbList.Padding = UDim.new(0, 12)
+pnbList.SortOrder = Enum.SortOrder.LayoutOrder
+pnbList.Parent = tabPnB
+
+local pnbPadding = Instance.new("UIPadding")
+pnbPadding.PaddingLeft = UDim.new(0, 5)
+pnbPadding.PaddingRight = UDim.new(0, 5)
+pnbPadding.PaddingTop = UDim.new(0, 5)
+pnbPadding.PaddingBottom = UDim.new(0, 10)
+pnbPadding.Parent = tabPnB
+
+-- Posisi Info Section
+local infoSection = Instance.new("Frame")
+infoSection.Size = UDim2.new(1, 0, 0, 32)
+infoSection.BackgroundTransparency = 1
+infoSection.LayoutOrder = 1
+infoSection.Parent = tabPnB
 
 -- Posisi label
 local posLabel = Instance.new("TextLabel")
@@ -420,7 +475,7 @@ posLabel.TextSize = 12
 posLabel.Font = Enum.Font.Gotham
 posLabel.TextXAlignment = Enum.TextXAlignment.Left
 posLabel.Position = UDim2.new(0, 0, 0, 0)
-posLabel.Parent = tabPnB
+posLabel.Parent = infoSection
 
 -- Backpack info label
 local bpLabel = Instance.new("TextLabel")
@@ -432,13 +487,13 @@ bpLabel.TextSize = 12
 bpLabel.Font = Enum.Font.Gotham
 bpLabel.TextXAlignment = Enum.TextXAlignment.Left
 bpLabel.Position = UDim2.new(0, 0, 0, 16)
-bpLabel.Parent = tabPnB
+bpLabel.Parent = infoSection
 
 -- Item ID display + Select button
 local itemRow = Instance.new("Frame")
 itemRow.Size = UDim2.new(1, 0, 0, 55)
-itemRow.Position = UDim2.new(0, 0, 0, 36)
 itemRow.BackgroundTransparency = 1
+itemRow.LayoutOrder = 2
 itemRow.Parent = tabPnB
 
 local itemLabel = Instance.new("TextLabel")
@@ -575,8 +630,8 @@ local gridTotal = GRID_SIZE * CELL_SIZE + (GRID_SIZE - 1) * CELL_GAP
 
 local gridFrame = Instance.new("Frame")
 gridFrame.Size = UDim2.new(0, gridTotal, 0, gridTotal)
-gridFrame.Position = UDim2.new(0.5, -gridTotal / 2, 0, 98)
 gridFrame.BackgroundTransparency = 1
+gridFrame.LayoutOrder = 3
 gridFrame.Parent = tabPnB
 
 for row = 0, GRID_SIZE - 1 do
@@ -630,36 +685,41 @@ gridHint.Text = "Klik cell = target PnB"
 gridHint.TextColor3 = C.dim
 gridHint.TextSize = 10
 gridHint.Font = Enum.Font.Gotham
+gridHint.LayoutOrder = 4
 gridHint.Parent = tabPnB
 
 -- ═══════════════════════════════════════
 -- PLACE / BREAK TOGGLES
 -- ═══════════════════════════════════════
 
-local toggleY = 98 + gridTotal + 20
+local toggleRow = Instance.new("Frame")
+toggleRow.Size = UDim2.new(1, 0, 0, 24)
+toggleRow.BackgroundTransparency = 1
+toggleRow.LayoutOrder = 5
+toggleRow.Parent = tabPnB
 
 local placeToggle = Instance.new("TextButton")
-placeToggle.Size = UDim2.new(0.48, 0, 0, 24)
-placeToggle.Position = UDim2.new(0, 0, 0, toggleY)
+placeToggle.Size = UDim2.new(0, 125, 0, 24)
+placeToggle.Position = UDim2.new(0, 0, 0, 0)
 placeToggle.BackgroundColor3 = C.btnStart
 placeToggle.Text = "🧱 Place: ON"
 placeToggle.TextColor3 = C.white
 placeToggle.TextSize = 11
 placeToggle.Font = Enum.Font.GothamBold
 placeToggle.BorderSizePixel = 0
-placeToggle.Parent = tabPnB
+placeToggle.Parent = toggleRow
 Instance.new("UICorner", placeToggle).CornerRadius = UDim.new(0, 6)
 
 local breakToggle = Instance.new("TextButton")
-breakToggle.Size = UDim2.new(0.48, 0, 0, 24)
-breakToggle.Position = UDim2.new(0.52, 0, 0, toggleY)
+breakToggle.Size = UDim2.new(0, 125, 0, 24)
+breakToggle.Position = UDim2.new(1, -125, 0, 0)
 breakToggle.BackgroundColor3 = C.btnStart
 breakToggle.Text = "⛏️ Break: ON"
 breakToggle.TextColor3 = C.white
 breakToggle.TextSize = 11
 breakToggle.Font = Enum.Font.GothamBold
 breakToggle.BorderSizePixel = 0
-breakToggle.Parent = tabPnB
+breakToggle.Parent = toggleRow
 Instance.new("UICorner", breakToggle).CornerRadius = UDim.new(0, 6)
 
 placeToggle.MouseButton1Click:Connect(function()
@@ -688,30 +748,34 @@ end)
 -- CONTROLS
 -- ═══════════════════════════════════════
 
-local ctrlY = 98 + gridTotal + 50
+local mainControls = Instance.new("Frame")
+mainControls.Size = UDim2.new(1, 0, 0, 28)
+mainControls.BackgroundTransparency = 1
+mainControls.LayoutOrder = 6
+mainControls.Parent = tabPnB
 
 local startBtn = Instance.new("TextButton")
-startBtn.Size = UDim2.new(0.48, 0, 0, 28)
-startBtn.Position = UDim2.new(0, 0, 0, ctrlY)
+startBtn.Size = UDim2.new(0, 125, 1, 0)
+startBtn.Position = UDim2.new(0, 0, 0, 0)
 startBtn.BackgroundColor3 = C.btnStart
 startBtn.Text = "▶  START"
 startBtn.TextColor3 = C.white
 startBtn.TextSize = 13
 startBtn.Font = Enum.Font.GothamBold
 startBtn.BorderSizePixel = 0
-startBtn.Parent = tabPnB
+startBtn.Parent = mainControls
 Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 7)
 
 local stopBtn = Instance.new("TextButton")
-stopBtn.Size = UDim2.new(0.48, 0, 0, 28)
-stopBtn.Position = UDim2.new(0.52, 0, 0, ctrlY)
+stopBtn.Size = UDim2.new(0, 125, 1, 0)
+stopBtn.Position = UDim2.new(1, -125, 0, 0)
 stopBtn.BackgroundColor3 = C.btnStop
 stopBtn.Text = "■  STOP"
 stopBtn.TextColor3 = C.white
 stopBtn.TextSize = 13
 stopBtn.Font = Enum.Font.GothamBold
 stopBtn.BorderSizePixel = 0
-stopBtn.Parent = tabPnB
+stopBtn.Parent = mainControls
 Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 7)
 
 startBtn.MouseButton1Click:Connect(function()
@@ -725,48 +789,56 @@ stopBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Status
+local statusSection = Instance.new("Frame")
+statusSection.Size = UDim2.new(1, 0, 0, 32)
+statusSection.BackgroundTransparency = 1
+statusSection.LayoutOrder = 7
+statusSection.Parent = tabPnB
+
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, 0, 0, 14)
-statusLabel.Position = UDim2.new(0, 0, 0, ctrlY + 32)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text = "Status: Idle"
 statusLabel.TextColor3 = C.dim
 statusLabel.TextSize = 11
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = tabPnB
+statusLabel.Parent = statusSection
 
 local cycleLabel = Instance.new("TextLabel")
 cycleLabel.Size = UDim2.new(1, 0, 0, 14)
-cycleLabel.Position = UDim2.new(0, 0, 0, ctrlY + 46)
+cycleLabel.Position = UDim2.new(0, 0, 0, 14)
 cycleLabel.BackgroundTransparency = 1
 cycleLabel.Text = "Siklus: 0 | Target: 0"
 cycleLabel.TextColor3 = C.dim
 cycleLabel.TextSize = 11
 cycleLabel.Font = Enum.Font.Gotham
 cycleLabel.TextXAlignment = Enum.TextXAlignment.Left
-cycleLabel.Parent = tabPnB
+cycleLabel.Parent = statusSection
 
 -- Delay slider
-local delayY = ctrlY + 64
+local delaySection = Instance.new("Frame")
+delaySection.Size = UDim2.new(1, 0, 0, 35)
+delaySection.BackgroundTransparency = 1
+delaySection.LayoutOrder = 8
+delaySection.Parent = tabPnB
 
 local delayLabel = Instance.new("TextLabel")
 delayLabel.Size = UDim2.new(1, 0, 0, 14)
-delayLabel.Position = UDim2.new(0, 0, 0, delayY)
 delayLabel.BackgroundTransparency = 1
 delayLabel.Text = "⏱️ Delay Break: 0.15s"
 delayLabel.TextColor3 = C.dim
 delayLabel.TextSize = 11
 delayLabel.Font = Enum.Font.Gotham
 delayLabel.TextXAlignment = Enum.TextXAlignment.Left
-delayLabel.Parent = tabPnB
+delayLabel.Parent = delaySection
 
 local sliderBg = Instance.new("Frame")
 sliderBg.Size = UDim2.new(1, 0, 0, 6)
-sliderBg.Position = UDim2.new(0, 0, 0, delayY + 16)
+sliderBg.Position = UDim2.new(0, 0, 0, 20)
 sliderBg.BackgroundColor3 = C.cellOff
 sliderBg.BorderSizePixel = 0
-sliderBg.Parent = tabPnB
+sliderBg.Parent = delaySection
 Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(0, 3)
 
 local sliderFill = Instance.new("Frame")
@@ -777,11 +849,11 @@ sliderFill.Parent = sliderBg
 Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 3)
 
 local sliderHit = Instance.new("TextButton")
-sliderHit.Size = UDim2.new(1, 0, 0, 18)
-sliderHit.Position = UDim2.new(0, 0, 0, delayY + 10)
+sliderHit.Size = UDim2.new(1, 0, 1, 10)
+sliderHit.Position = UDim2.new(0, 0, 0, -5)
 sliderHit.BackgroundTransparency = 1
 sliderHit.Text = ""
-sliderHit.Parent = tabPnB
+sliderHit.Parent = sliderBg
 
 local sliderDrag = false
 sliderHit.InputBegan:Connect(function(input)
