@@ -2,9 +2,13 @@
     PlayerModule.lua
     Module for Player-related features:
     - God Mode (block PlayerHurtMe)
-    - Sprint (increase WalkSpeed)
-    - Zero Gravity / Fly (float in place)
-    - Infinite Jump (jump in mid-air)
+    - Sprint (force WalkSpeed setiap frame)
+    - Zero Gravity (workspace.Gravity = 0)
+    - Infinite Jump (JumpRequest + ChangeState)
+    
+    NOTE: Game ini pakai custom movement (PlayerMovementPackets),
+    jadi kita harus paksa properti Humanoid setiap frame
+    agar game tidak override balik.
 ]]
 
 local PlayerModule = {}
@@ -21,14 +25,14 @@ local player = Players.LocalPlayer
 
 PlayerModule.GOD_MODE = false
 PlayerModule.SPRINT = false
-PlayerModule.SPRINT_SPEED = 32       -- Default sprint speed (normal = 16)
+PlayerModule.SPRINT_SPEED = 32
 PlayerModule.ZERO_GRAVITY = false
 PlayerModule.INFINITE_JUMP = false
 
 local _defaultWalkSpeed = 16
-local _bodyVelocity = nil  -- BodyVelocity for zero gravity
+local _defaultGravity = 196.2   -- Default Roblox gravity
 local _hookInstalled = false
-local _connections = {}     -- Store connections for cleanup
+local _connections = {}
 
 -- ═══════════════════════════════════════
 -- REMOTE REFERENCES
@@ -100,36 +104,48 @@ local function installGodModeHook()
 end
 
 -- ═══════════════════════════════════════
--- HELPER: Get character parts
+-- HELPER
 -- ═══════════════════════════════════════
-
-local function getCharacter()
-    return player.Character or player.CharacterAdded:Wait()
-end
 
 local function getHumanoid()
     local char = player.Character
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
-local function getRootPart()
-    local char = player.Character
-    return char and char:FindFirstChild("HumanoidRootPart")
-end
+-- ═══════════════════════════════════════
+-- SPRINT — Force WalkSpeed setiap frame
+-- ═══════════════════════════════════════
 
--- ═══════════════════════════════════════
--- SPRINT
--- ═══════════════════════════════════════
+local _sprintConn = nil
 
 function PlayerModule.setSprint(state)
     PlayerModule.SPRINT = state
-    local humanoid = getHumanoid()
-    if humanoid then
-        if state then
-            _defaultWalkSpeed = humanoid.WalkSpeed
-            humanoid.WalkSpeed = PlayerModule.SPRINT_SPEED
-        else
-            humanoid.WalkSpeed = _defaultWalkSpeed
+    
+    if state then
+        -- Simpan default speed
+        local hum = getHumanoid()
+        if hum then
+            _defaultWalkSpeed = hum.WalkSpeed
+        end
+        
+        -- Force WalkSpeed setiap frame supaya game gak bisa override
+        if _sprintConn then _sprintConn:Disconnect() end
+        _sprintConn = RunService.Heartbeat:Connect(function()
+            if not PlayerModule.SPRINT then return end
+            local hum = getHumanoid()
+            if hum then
+                hum.WalkSpeed = PlayerModule.SPRINT_SPEED
+            end
+        end)
+    else
+        -- Disconnect loop dan restore speed
+        if _sprintConn then
+            _sprintConn:Disconnect()
+            _sprintConn = nil
+        end
+        local hum = getHumanoid()
+        if hum then
+            hum.WalkSpeed = _defaultWalkSpeed
         end
     end
     print("[CawScript] Sprint: " .. (state and "ON" or "OFF"))
@@ -137,65 +153,40 @@ end
 
 function PlayerModule.setSprintSpeed(speed)
     PlayerModule.SPRINT_SPEED = speed
-    if PlayerModule.SPRINT then
-        local humanoid = getHumanoid()
-        if humanoid then
-            humanoid.WalkSpeed = speed
-        end
-    end
 end
 
 -- ═══════════════════════════════════════
--- ZERO GRAVITY / FLY
+-- ZERO GRAVITY — Ubah workspace.Gravity
 -- ═══════════════════════════════════════
 
 function PlayerModule.setZeroGravity(state)
     PlayerModule.ZERO_GRAVITY = state
-    local rootPart = getRootPart()
     
     if state then
-        if rootPart then
-            -- Remove old BodyVelocity if exists
-            local old = rootPart:FindFirstChild("CawZeroGrav")
-            if old then old:Destroy() end
-            
-            -- Create BodyVelocity to counteract gravity
-            local bv = Instance.new("BodyVelocity")
-            bv.Name = "CawZeroGrav"
-            bv.Velocity = Vector3.new(0, 0, 0)
-            bv.MaxForce = Vector3.new(0, math.huge, 0) -- Only Y axis
-            bv.P = 1250
-            bv.Parent = rootPart
-            _bodyVelocity = bv
-        end
+        _defaultGravity = workspace.Gravity
+        workspace.Gravity = 0
     else
-        -- Remove BodyVelocity to restore gravity
-        if _bodyVelocity then
-            _bodyVelocity:Destroy()
-            _bodyVelocity = nil
-        end
-        if rootPart then
-            local old = rootPart:FindFirstChild("CawZeroGrav")
-            if old then old:Destroy() end
-        end
+        workspace.Gravity = _defaultGravity
     end
     print("[CawScript] Zero Gravity: " .. (state and "ON" or "OFF"))
 end
 
 -- ═══════════════════════════════════════
--- INFINITE JUMP
+-- INFINITE JUMP — Jump kapan saja
 -- ═══════════════════════════════════════
 
+local _jumpConn = nil
+
 local function setupInfiniteJump()
-    local conn = UIS.JumpRequest:Connect(function()
+    _jumpConn = UIS.JumpRequest:Connect(function()
         if PlayerModule.INFINITE_JUMP then
-            local humanoid = getHumanoid()
-            if humanoid then
-                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            local hum = getHumanoid()
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end
     end)
-    table.insert(_connections, conn)
+    table.insert(_connections, _jumpConn)
 end
 
 function PlayerModule.setInfiniteJump(state)
@@ -211,17 +202,22 @@ function PlayerModule.init()
     installGodModeHook()
     setupInfiniteJump()
     
-    -- Keep sprint speed on respawn
+    -- Handle respawn
     player.CharacterAdded:Connect(function(char)
-        local humanoid = char:WaitForChild("Humanoid", 5)
-        if humanoid and PlayerModule.SPRINT then
-            humanoid.WalkSpeed = PlayerModule.SPRINT_SPEED
+        task.wait(0.5)
+        
+        -- Re-apply sprint jika aktif
+        if PlayerModule.SPRINT then
+            local hum = char:WaitForChild("Humanoid", 5)
+            if hum then
+                _defaultWalkSpeed = hum.WalkSpeed
+            end
+            -- Sprint loop sudah jalan terus, jadi otomatis apply
         end
         
-        -- Re-apply zero gravity on respawn if active
+        -- Re-apply zero gravity
         if PlayerModule.ZERO_GRAVITY then
-            task.wait(0.5)
-            PlayerModule.setZeroGravity(true)
+            workspace.Gravity = 0
         end
     end)
     
