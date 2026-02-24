@@ -54,6 +54,7 @@ Manager.COLLECT_BLOCK_ID   = 1
 Manager.COLLECT_SAPLING_ID = 1
 Manager.COLLECT_RANGE      = 2
 Manager.COLLECT_DELAY      = 0.3
+Manager.COLLECT_SAPLING_ONLY = false
 Manager._collectRunning    = false
 Manager._collectThread     = nil
 
@@ -223,29 +224,42 @@ local function magnetLoop()
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if root then
             -- Cari item di workspace
-            -- Biasanya item yang drop ada di folder 'Items' atau punya attribute tertentu
             local items = workspace:FindFirstChild("Items")
             local targetFolder = items or workspace
             
             for _, item in ipairs(targetFolder:GetChildren()) do
                 if not Manager._collectRunning then break end
                 
-                -- Deteksi apakah ini item (punya attribute 'itemID' atau 'Count' biasanya)
+                -- Deteksi apakah ini item
                 if item:IsA("BasePart") or (item:IsA("Model") and item.PrimaryPart) then
-                    local dist = (item:GetPivot().Position - root.Position).Magnitude
+                    local pos = item:GetPivot().Position
+                    local dist = (pos - root.Position).Magnitude
                     
-                    -- Gunakan COLLECT_RANGE (dalam satuan stud, misal 1 grid = 13 stud)
-                    local maxStuds = Manager.COLLECT_RANGE * 13
+                    -- Grid-based Radius (1 grid = 4.5 studs)
+                    local maxStuds = Manager.COLLECT_RANGE * 4.5
                     
                     if dist <= maxStuds then
-                        -- Teleport item ke player (Magnet)
-                        pcall(function()
-                            if item:IsA("BasePart") then
-                                item.CFrame = root.CFrame
-                            else
-                                item:PivotTo(root.CFrame)
+                        -- Filter Sapling Only jika aktif
+                        local shouldCollect = true
+                        if Manager.COLLECT_SAPLING_ONLY then
+                            local name = item.Name:lower()
+                            -- Cek nama atau attribute
+                            local isSapling = name:find("sapling") or name:find("seed") or item:GetAttribute("IsSapling")
+                            if not isSapling then
+                                shouldCollect = false
                             end
-                        end)
+                        end
+
+                        if shouldCollect then
+                            -- Teleport item ke player (Magnet)
+                            pcall(function()
+                                if item:IsA("BasePart") then
+                                    item.CFrame = root.CFrame
+                                else
+                                    item:PivotTo(root.CFrame)
+                                end
+                            end)
+                        end
                     end
                 end
             end

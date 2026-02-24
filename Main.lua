@@ -1190,7 +1190,7 @@ UIS.InputChanged:Connect(function(input)
     if rangeDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local rel = math.clamp((input.Position.X - rangeSliderBg.AbsolutePosition.X) / rangeSliderBg.AbsoluteSize.X, 0, 1)
         rangeSliderFill.Size = UDim2.new(rel, 0, 1, 0)
-        local val = math.max(math.floor(rel * 10), 1) -- Up to 10 grids
+        local val = math.max(math.floor(rel * 5), 1) -- 1 to 5 grids
         ManagerModule.COLLECT_RANGE = val
         rangeLabel.Text = "Magnet Radius: " .. val .. " Grid"
     end
@@ -1201,9 +1201,42 @@ UIS.InputEnded:Connect(function(input)
     end
 end)
 
+local sapToggleRow = Instance.new("Frame")
+sapToggleRow.Size = UDim2.new(1, 0, 0, 24)
+sapToggleRow.Position = UDim2.new(0, 0, 0, 32)
+sapToggleRow.BackgroundTransparency = 1
+sapToggleRow.Parent = collectContent
+
+local sapLabel = Instance.new("TextLabel")
+sapLabel.Size = UDim2.new(1, -50, 1, 0)
+sapLabel.BackgroundTransparency = 1
+sapLabel.Text = "🌱 Sapling / Seed Only"
+sapLabel.TextColor3 = C.dim
+sapLabel.TextSize = 11
+sapLabel.Font = Enum.Font.Gotham
+sapLabel.TextXAlignment = Enum.TextXAlignment.Left
+sapLabel.Parent = sapToggleRow
+
+local sapToggle = Instance.new("TextButton")
+sapToggle.Size = UDim2.new(0, 45, 0, 20)
+sapToggle.Position = UDim2.new(1, -45, 0, 2)
+sapToggle.BackgroundColor3 = C.cellOff
+sapToggle.Text = "OFF"
+sapToggle.TextColor3 = C.white
+sapToggle.TextSize = 10
+sapToggle.Font = Enum.Font.GothamBold
+sapToggle.Parent = sapToggleRow
+Instance.new("UICorner", sapToggle).CornerRadius = UDim.new(0, 4)
+
+sapToggle.MouseButton1Click:Connect(function()
+    ManagerModule.COLLECT_SAPLING_ONLY = not ManagerModule.COLLECT_SAPLING_ONLY
+    sapToggle.Text = ManagerModule.COLLECT_SAPLING_ONLY and "ON" or "OFF"
+    sapToggle.BackgroundColor3 = ManagerModule.COLLECT_SAPLING_ONLY and C.accent or C.cellOff
+end)
+
 local collectToggle = Instance.new("TextButton")
 collectToggle.Size = UDim2.new(1, 0, 0, 26)
-collectToggle.Position = UDim2.new(0, 0, 0, 32)
+collectToggle.Position = UDim2.new(0, 0, 0, 64)
 collectToggle.BackgroundColor3 = C.btnGrey
 collectToggle.Text = "OFF"
 collectToggle.TextColor3 = C.white
