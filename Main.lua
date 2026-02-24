@@ -33,6 +33,8 @@ ManagerModule.init(Coordinates, Antiban, BackpackSync)
 local PlayerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/PlayerModule.lua" .. NOCACHE))()
 -- PlayerModule.init() dipanggil setelah hook setup di bawah
 
+local ItemScanner = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ItemScanner.lua" .. NOCACHE))()
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
@@ -1579,6 +1581,34 @@ end)
 -- 4. Infinite Jump
 createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
+end)
+
+-- 5. Item Scan (Popup)
+local scanFrame = Instance.new("Frame")
+scanFrame.Size = UDim2.new(1, -10, 0, 40)
+scanFrame.BackgroundColor3 = C.sidebar
+scanFrame.BorderSizePixel = 0
+scanFrame.LayoutOrder = 6
+scanFrame.Parent = tabPlayer
+Instance.new("UICorner", scanFrame).CornerRadius = UDim.new(0, 8)
+
+local scanBtn = Instance.new("TextButton")
+scanBtn.Size = UDim2.new(1, -20, 0, 26)
+scanBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
+scanBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+scanBtn.BackgroundColor3 = C.accent
+scanBtn.Text = "🔍 WORLD ITEM SCAN"
+scanBtn.TextColor3 = C.white
+scanBtn.TextSize = 12
+scanBtn.Font = Enum.Font.GothamBold
+scanBtn.BorderSizePixel = 0
+scanBtn.Parent = scanFrame
+Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 6)
+
+scanBtn.MouseButton1Click:Connect(function()
+    if ItemScanner then
+        ItemScanner.showPopup(gui)
+    end
 end)
 
 -- ═══════════════════════════════════════
