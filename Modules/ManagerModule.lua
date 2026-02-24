@@ -214,28 +214,43 @@ end
 -- AUTO COLLECT LOOP
 -- ═══════════════════════════════════════
 
-local function collectLoop()
+-- ═══════════════════════════════════════
+-- AUTO COLLECT (MAGNET) LOOP
+-- ═══════════════════════════════════════
+
+local function magnetLoop()
     while Manager._collectRunning do
-        local px, py = Coordinates.getGridPosition()
-        if px then
-            local r = Manager.COLLECT_RANGE
-            for dx = -r, r do
-                for dy = -r, r do
-                    if not Manager._collectRunning then break end
-                    if not RemoteFist or not RemotePlace then
-                        Manager._collectRunning = false
-                        break
-                    end
-                    local tx, ty = px + dx, py + dy
-                    pcall(function() RemoteFist:FireServer(Vector2.new(tx, ty)) end)
-                    task.wait(0.1)
-                    pcall(function() RemotePlace:FireServer(Vector2.new(tx, ty), Manager.COLLECT_SAPLING_ID) end)
-                    task.wait(Manager.COLLECT_DELAY)
-                end
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            -- Cari item di workspace
+            -- Biasanya item yang drop ada di folder 'Items' atau punya attribute tertentu
+            local items = workspace:FindFirstChild("Items")
+            local targetFolder = items or workspace
+            
+            for _, item in ipairs(targetFolder:GetChildren()) do
                 if not Manager._collectRunning then break end
+                
+                -- Deteksi apakah ini item (punya attribute 'itemID' atau 'Count' biasanya)
+                if item:IsA("BasePart") or (item:IsA("Model") and item.PrimaryPart) then
+                    local dist = (item:GetPivot().Position - root.Position).Magnitude
+                    
+                    -- Gunakan COLLECT_RANGE (dalam satuan stud, misal 1 grid = 13 stud)
+                    local maxStuds = Manager.COLLECT_RANGE * 13
+                    
+                    if dist <= maxStuds then
+                        -- Teleport item ke player (Magnet)
+                        pcall(function()
+                            if item:IsA("BasePart") then
+                                item.CFrame = root.CFrame
+                            else
+                                item:PivotTo(root.CFrame)
+                            end
+                        end)
+                    end
+                end
             end
         end
-        task.wait(1)
+        task.wait(Manager.COLLECT_DELAY)
     end
 end
 

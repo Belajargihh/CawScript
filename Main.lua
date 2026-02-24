@@ -1138,78 +1138,18 @@ dropToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- --- AUTO COLLECT SECTION ---
-local collectContent = createSection("🚜 Auto Farm Radius", 140)
+-- --- AUTO COLLECT (MAGNET) SECTION ---
+local collectContent = createSection("🚜 Auto Collect Item")
 
-local function createManagerItem(parent, y, label, defaultId, onSelected)
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 24)
-    row.Position = UDim2.new(0, 0, 0, y)
-    row.BackgroundTransparency = 1
-    row.Parent = parent
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 50, 1, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = label
-    lbl.TextColor3 = C.dim
-    lbl.TextSize = 10
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = row
-    
-    local disp = Instance.new("TextLabel")
-    disp.Size = UDim2.new(0, 40, 0, 20)
-    disp.Position = UDim2.new(0, 55, 0, 2)
-    disp.BackgroundColor3 = C.cellOff
-    disp.Text = tostring(defaultId)
-    disp.TextColor3 = C.dim
-    disp.TextSize = 12
-    disp.Font = Enum.Font.GothamBold
-    disp.BorderSizePixel = 0
-    disp.Parent = row
-    Instance.new("UICorner", disp).CornerRadius = UDim.new(0, 4)
-    
-    local sel = Instance.new("TextButton")
-    sel.Size = UDim2.new(1, -105, 0, 20)
-    sel.Position = UDim2.new(0, 105, 0, 2)
-    sel.BackgroundColor3 = C.accent
-    sel.Text = "🔍 Select"
-    sel.TextColor3 = C.white
-    sel.TextSize = 10
-    sel.Font = Enum.Font.GothamBold
-    sel.BorderSizePixel = 0
-    sel.Parent = row
-    Instance.new("UICorner", sel).CornerRadius = UDim.new(0, 4)
-    
-    sel.MouseButton1Click:Connect(function()
-        if not hookSuccess then return end
-        if detectCallback then
-            detectCallback = nil
-            sel.BackgroundColor3 = C.accent
-            sel.Text = "🔍 Select"
-        else
-            sel.BackgroundColor3 = Color3.fromRGB(220, 160, 0)
-            sel.Text = "Wait..."
-            detectCallback = function(id)
-                onSelected(id)
-                disp.Text = tostring(id)
-                sel.BackgroundColor3 = C.accent
-                sel.Text = "🔍 Select"
-            end
-        end
-    end)
-end
-
-createManagerItem(collectContent, 0, "Blok ID:", 1, function(id) ManagerModule.COLLECT_BLOCK_ID = id end)
-createManagerItem(collectContent, 28, "Sapling ID:", 1, function(id) ManagerModule.COLLECT_SAPLING_ID = id end)
+-- Menghapus input Blok ID dan Sapling ID yang tidak relevan untuk Magnet
+-- Langsung ke Slider Radius
 
 -- Range Slider
 local rangeLabel = Instance.new("TextLabel")
 rangeLabel.Size = UDim2.new(1, 0, 0, 16)
-rangeLabel.Position = UDim2.new(0, 0, 0, 56)
+rangeLabel.Position = UDim2.new(0, 0, 0, 0)
 rangeLabel.BackgroundTransparency = 1
-rangeLabel.Text = "Radius: 2 Grid"
+rangeLabel.Text = "Magnet Radius: 2 Grid"
 rangeLabel.TextColor3 = C.dim
 rangeLabel.TextSize = 11
 rangeLabel.Font = Enum.Font.Gotham
@@ -1218,7 +1158,7 @@ rangeLabel.Parent = collectContent
 
 local rangeSliderBg = Instance.new("Frame")
 rangeSliderBg.Size = UDim2.new(1, 0, 0, 4)
-rangeSliderBg.Position = UDim2.new(0, 0, 0, 74)
+rangeSliderBg.Position = UDim2.new(0, 0, 0, 18)
 rangeSliderBg.BackgroundColor3 = C.cellOff
 rangeSliderBg.BorderSizePixel = 0
 rangeSliderBg.Parent = collectContent
@@ -1233,7 +1173,7 @@ Instance.new("UICorner", rangeSliderFill).CornerRadius = UDim.new(0, 2)
 
 local rangeSliderHit = Instance.new("TextButton")
 rangeSliderHit.Size = UDim2.new(1, 0, 0, 12)
-rangeSliderHit.Position = UDim2.new(0, 0, 0, 70)
+rangeSliderHit.Position = UDim2.new(0, 0, 0, 14)
 rangeSliderHit.BackgroundTransparency = 1
 rangeSliderHit.Text = ""
 rangeSliderHit.Parent = collectContent
@@ -1248,9 +1188,9 @@ UIS.InputChanged:Connect(function(input)
     if rangeDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local rel = math.clamp((input.Position.X - rangeSliderBg.AbsolutePosition.X) / rangeSliderBg.AbsoluteSize.X, 0, 1)
         rangeSliderFill.Size = UDim2.new(rel, 0, 1, 0)
-        local val = math.max(math.floor(rel * 5), 1)
+        local val = math.max(math.floor(rel * 10), 1) -- Up to 10 grids
         ManagerModule.COLLECT_RANGE = val
-        rangeLabel.Text = "Radius: " .. val .. " Grid"
+        rangeLabel.Text = "Magnet Radius: " .. val .. " Grid"
     end
 end)
 UIS.InputEnded:Connect(function(input)
@@ -1261,7 +1201,7 @@ end)
 
 local collectToggle = Instance.new("TextButton")
 collectToggle.Size = UDim2.new(1, 0, 0, 26)
-collectToggle.Position = UDim2.new(0, 0, 0, 88)
+collectToggle.Position = UDim2.new(0, 0, 0, 32)
 collectToggle.BackgroundColor3 = C.btnGrey
 collectToggle.Text = "OFF"
 collectToggle.TextColor3 = C.white
