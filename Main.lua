@@ -29,7 +29,7 @@ local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerMod
 ManagerModule.init(Coordinates, Antiban, BackpackSync)
 
 local PlayerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/PlayerModule.lua" .. NOCACHE))()
-PlayerModule.init()
+-- PlayerModule.init() dipanggil setelah hook setup di bawah
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -99,6 +99,9 @@ if not hookSuccess then
         hookSuccess = true
     end)
 end
+
+-- Init PlayerModule SETELAH hook utama selesai
+PlayerModule.init()
 
 -- ═══════════════════════════════════════
 -- WARNA & STYLE
