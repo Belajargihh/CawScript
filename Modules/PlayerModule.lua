@@ -144,7 +144,18 @@ function PlayerModule.setZoomOut(state)
     if state then
         player.CameraMaxZoomDistance = PlayerModule.ZOOM_DISTANCE
     else
+        -- CRITICAL FIX: To prevent "stuck" camera, we reset limits properly.
+        -- If current zoom is > 128, Roblox might lock up if we just set Max.
         player.CameraMaxZoomDistance = 128
+        player.CameraMinZoomDistance = 0.5
+        
+        -- Force a small update to camera to ensure it snaps back if it was far away
+        local camera = workspace.CurrentCamera
+        if camera then
+            camera.FieldOfView = camera.FieldOfView + 0.01
+            task.wait()
+            camera.FieldOfView = camera.FieldOfView - 0.01
+        end
     end
     print("[CawScript] Zoom Out: " .. (state and "ON" or "OFF"))
 end
