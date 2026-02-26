@@ -1,3 +1,12 @@
+local results = {}
+local function log(txt)
+    table.insert(results, tostring(txt))
+    if _G.DiagnosticLog then
+        _G.DiagnosticLog(txt)
+    end
+    print("[DIAG] " .. tostring(txt))
+end
+
 log("\n[DEEP SCAN] Analisa Item di folder DROPS...")
 pcall(function()
     local d = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items")
@@ -23,7 +32,8 @@ pcall(function()
     end
 end)
 
--- 2. Bangun UI Paling Dasar (No Scrolling Frame)
+-- 2. Bangun UI Paling Dasar (Hanya jika dijalankan langsung, bukan lewat Main)
+if not _G.DiagnosticLog then
 local gui = Instance.new("ScreenGui")
 gui.Name = "StableDiagUI"
 gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") or player.PlayerGui
@@ -78,5 +88,6 @@ close.Text = "CLOSE"
 close.TextColor3 = Color3.new(1,1,1)
 close.Parent = bg
 close.MouseButton1Click:Connect(function() gui:Destroy() end)
+end
 
 warn("[DIAG] SCRIPT SELESAI DIJALANKAN!")

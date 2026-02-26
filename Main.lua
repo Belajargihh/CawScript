@@ -285,6 +285,7 @@ local tabs = {
     {icon = "🤖", name = "Bot"},
     {icon = "🌍", name = "Clear World"},
     {icon = "👤", name = "Player"},
+    {icon = "🧪", name = "Diagnostic"},
 }
 
 local tabButtons = {}
@@ -1596,29 +1597,187 @@ createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
 
--- 5. Item Scan (Popup)
-local scanFrame = Instance.new("Frame")
-scanFrame.Size = UDim2.new(1, -10, 0, 40)
-scanFrame.BackgroundColor3 = C.sidebar
-scanFrame.BorderSizePixel = 0
-scanFrame.LayoutOrder = 6
-scanFrame.Parent = tabPlayer
-Instance.new("UICorner", scanFrame).CornerRadius = UDim.new(0, 8)
+-- ═══════════════════════════════════════
+-- TAB 7: DIAGNOSTIC
+-- ═══════════════════════════════════════
+local tabDiag = Instance.new("ScrollingFrame")
+tabDiag.Size = UDim2.new(1, -10, 1, -10)
+tabDiag.Position = UDim2.new(0, 5, 0, 5)
+tabDiag.BackgroundTransparency = 1
+tabDiag.BorderSizePixel = 0
+tabDiag.ScrollBarThickness = 2
+tabDiag.Visible = false
+tabDiag.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabDiag.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabDiag.Parent = contentContainer
+tabFrames[7] = tabDiag
 
-local scanBtn = Instance.new("TextButton")
-scanBtn.Size = UDim2.new(1, -20, 0, 26)
-scanBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
-scanBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-scanBtn.BackgroundColor3 = C.accent
-scanBtn.Text = "🔍 WORLD ITEM SCAN"
-scanBtn.TextColor3 = C.white
-scanBtn.TextSize = 12
-scanBtn.Font = Enum.Font.GothamBold
-scanBtn.BorderSizePixel = 0
-scanBtn.Parent = scanFrame
-Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 6)
+local diagList = Instance.new("UIListLayout")
+diagList.Padding = UDim.new(0, 10)
+diagList.SortOrder = Enum.SortOrder.LayoutOrder
+diagList.Parent = tabDiag
 
-scanBtn.MouseButton1Click:Connect(function()
+local diagPadding = Instance.new("UIPadding")
+diagPadding.PaddingLeft = UDim.new(0, 5)
+diagPadding.PaddingRight = UDim.new(0, 5)
+diagPadding.PaddingTop = UDim.new(0, 10)
+diagPadding.PaddingBottom = UDim.new(0, 10)
+diagPadding.Parent = tabDiag
+
+local diagTitle = Instance.new("TextLabel")
+diagTitle.Size = UDim2.new(1, 0, 0, 20)
+diagTitle.BackgroundTransparency = 1
+diagTitle.Text = "🧪 System Diagnostic"
+diagTitle.TextColor3 = C.white
+diagTitle.TextSize = 14
+diagTitle.Font = Enum.Font.GothamBold
+diagTitle.TextXAlignment = Enum.TextXAlignment.Left
+diagTitle.LayoutOrder = 1
+diagTitle.Parent = tabDiag
+
+-- --- LOG TERMINAL AREA ---
+local termFrame = Instance.new("Frame")
+termFrame.Size = UDim2.new(1, 0, 0, 150)
+termFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+termFrame.BorderSizePixel = 0
+termFrame.LayoutOrder = 2
+termFrame.Parent = tabDiag
+Instance.new("UICorner", termFrame).CornerRadius = UDim.new(0, 8)
+
+local termScroll = Instance.new("ScrollingFrame")
+termScroll.Size = UDim2.new(1, -10, 1, -10)
+termScroll.Position = UDim2.new(0, 5, 0, 5)
+termScroll.BackgroundTransparency = 1
+termScroll.BorderSizePixel = 0
+termScroll.ScrollBarThickness = 2
+termScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+termScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+termScroll.Parent = termFrame
+
+local termText = Instance.new("TextLabel")
+termText.Size = UDim2.new(1, 0, 0, 0)
+termText.AutomaticSize = Enum.AutomaticSize.Y
+termText.BackgroundTransparency = 1
+termText.Text = "--- Terminal Ready ---"
+termText.TextColor3 = Color3.fromRGB(0, 255, 100)
+termText.TextSize = 10
+termText.Font = Enum.Font.Code
+termText.TextXAlignment = Enum.TextXAlignment.Left
+termText.TextYAlignment = Enum.TextYAlignment.Top
+termText.TextWrapped = true
+termText.Parent = termScroll
+
+local function diagLog(msg)
+    local timestamp = os.date("%H:%M:%S")
+    termText.Text = termText.Text .. "\n[" .. timestamp .. "] " .. tostring(msg)
+    termScroll.CanvasPosition = Vector2.new(0, termScroll.AbsoluteCanvasSize.Y)
+end
+_G.DiagnosticLog = diagLog
+
+-- --- BUTTONS ROW ---
+local bRow = Instance.new("Frame")
+bRow.Size = UDim2.new(1, 0, 0, 26)
+bRow.BackgroundTransparency = 1
+bRow.LayoutOrder = 3
+bRow.Parent = tabDiag
+
+local clrBtn = Instance.new("TextButton")
+clrBtn.Size = UDim2.new(0.5, -5, 1, 0)
+clrBtn.BackgroundColor3 = C.btnGrey
+clrBtn.Text = "🗑️ CLEAR LOG"
+clrBtn.TextColor3 = C.white
+clrBtn.TextSize = 11
+clrBtn.Font = Enum.Font.GothamBold
+clrBtn.Parent = bRow
+Instance.new("UICorner", clrBtn).CornerRadius = UDim.new(0, 6)
+clrBtn.MouseButton1Click:Connect(function() termText.Text = "--- Log Cleared ---" end)
+
+local cpyBtn = Instance.new("TextButton")
+cpyBtn.Size = UDim2.new(0.5, -5, 1, 0)
+cpyBtn.Position = UDim2.new(0.5, 5, 0, 0)
+cpyBtn.BackgroundColor3 = C.accent
+cpyBtn.Text = "📋 COPY LOG"
+cpyBtn.TextColor3 = C.white
+cpyBtn.TextSize = 11
+cpyBtn.Font = Enum.Font.GothamBold
+cpyBtn.Parent = bRow
+Instance.new("UICorner", cpyBtn).CornerRadius = UDim.new(0, 6)
+cpyBtn.MouseButton1Click:Connect(function()
+    setclipboard(termText.Text)
+    cpyBtn.Text = "COPIED! ✅"
+    task.wait(1.5)
+    cpyBtn.Text = "📋 COPY LOG"
+end)
+
+-- --- TOOLS LIST ---
+local toolsSection = Instance.new("Frame")
+toolsSection.Size = UDim2.new(1, 0, 0, 0)
+toolsSection.AutomaticSize = Enum.AutomaticSize.Y
+toolsSection.BackgroundTransparency = 1
+toolsSection.LayoutOrder = 4
+toolsSection.Parent = tabDiag
+
+local tList = Instance.new("UIListLayout")
+tList.Padding = UDim.new(0, 6)
+tList.Parent = toolsSection
+
+local function createToolBtn(name, desc, onClick)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 38)
+    btn.BackgroundColor3 = C.sidebar
+    btn.BorderSizePixel = 0
+    btn.Text = ""
+    btn.Parent = toolsSection
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    local n = Instance.new("TextLabel")
+    n.Size = UDim2.new(1, -20, 0, 18)
+    n.Position = UDim2.new(0, 10, 0, 4)
+    n.BackgroundTransparency = 1
+    n.Text = name
+    n.TextColor3 = C.white
+    n.TextSize = 12
+    n.Font = Enum.Font.GothamBold
+    n.TextXAlignment = Enum.TextXAlignment.Left
+    n.Parent = btn
+    
+    local d = Instance.new("TextLabel")
+    d.Size = UDim2.new(1, -20, 0, 14)
+    d.Position = UDim2.new(0, 10, 0, 20)
+    d.BackgroundTransparency = 1
+    d.Text = desc
+    d.TextColor3 = C.dim
+    d.TextSize = 10
+    d.Font = Enum.Font.Gotham
+    d.TextXAlignment = Enum.TextXAlignment.Left
+    d.Parent = btn
+    
+    btn.MouseButton1Click:Connect(onClick)
+    return btn
+end
+
+createToolBtn("📦 Deep Scan Items", "Scan workspace folders for items/drops", function()
+    diagLog("Starting Deep Scan Items...")
+    loadstring(game:HttpGet(GITHUB_BASE .. "DiagnosticItems.lua" .. NOCACHE))()
+end)
+
+createToolBtn("💎 Gem Spy", "Hook network to spy gem transactions", function()
+    diagLog("Enabling Gem Spy...")
+    loadstring(game:HttpGet(GITHUB_BASE .. "DiagnosticGems.lua" .. NOCACHE))()
+end)
+
+createToolBtn("👣 Movement Spy", "Spy on movement related remotes", function()
+    diagLog("Enabling Movement Spy...")
+    loadstring(game:HttpGet(GITHUB_BASE .. "MovementSpy.lua" .. NOCACHE))()
+end)
+
+createToolBtn("📜 General Diagnostic", "Quick overview of player & inventory", function()
+    diagLog("Running General Diagnostic...")
+    loadstring(game:HttpGet(GITHUB_BASE .. "Diagnostic.lua" .. NOCACHE))()
+end)
+
+createToolBtn("🔍 World Item Scan", "Open advanced scanner popup", function()
+    diagLog("Opening World Item Scanner popup...")
     if ItemScanner then
         ItemScanner.showPopup(gui)
     end

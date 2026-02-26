@@ -14,11 +14,14 @@ local lastPackets = {} -- Untuk menghindari spam data yang sama
 -- ═══════════════════════════════════════
 -- UI SETUP
 -- ═══════════════════════════════════════
-local gui = Instance.new("ScreenGui")
-gui.Name = "MovementSpyUI"
-gui.DisplayOrder = 9999
 local p; pcall(function() p = gethui() end)
 if not p then pcall(function() p = game:GetService("CoreGui") end) end
+
+local gui
+if not _G.DiagnosticLog then
+gui = Instance.new("ScreenGui")
+gui.Name = "MovementSpyUI"
+gui.DisplayOrder = 9999
 gui.Parent = p or player.PlayerGui
 
 local bg = Instance.new("Frame")
@@ -49,8 +52,15 @@ scroll.Parent = bg
 local list = Instance.new("UIListLayout")
 list.Padding = UDim.new(0, 5)
 list.Parent = scroll
+end
 
 local function log(text, color)
+    if _G.DiagnosticLog then
+        _G.DiagnosticLog(text)
+    end
+
+    if not gui then return end
+    
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -10, 0, 20)
     lbl.BackgroundTransparency = 1
