@@ -25,7 +25,7 @@ PlayerModule.SPRINT_SPEED = 32       -- WalkSpeed target (Roblox default 16)
 PlayerModule.ZERO_GRAVITY = false
 PlayerModule.INFINITE_JUMP = false
 PlayerModule.ZOOM_OUT = false
-PlayerModule.ZOOM_DISTANCE = 1000
+PlayerModule.ZOOM_DISTANCE = 2000 -- Fixed large zoom
 
 local _gameModule = nil
 local _hookInstalled = false
@@ -147,13 +147,6 @@ function PlayerModule.setZoomOut(state)
         player.CameraMaxZoomDistance = 128
     end
     print("[CawScript] Zoom Out: " .. (state and "ON" or "OFF"))
-end
-
-function PlayerModule.setZoomDistance(val)
-    PlayerModule.ZOOM_DISTANCE = val
-    if PlayerModule.ZOOM_OUT then
-        player.CameraMaxZoomDistance = val
-    end
 end
 
 -- ═══════════════════════════════════════
