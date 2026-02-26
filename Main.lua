@@ -15,6 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
+local VERSION = "v1.2.0" -- New version with Zoom Out
 
 print("[CawScript] Memulai load dependencies...")
 local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
@@ -359,6 +360,18 @@ for i, tab in ipairs(tabs) do
     
     tabButtons[i] = btn
 end
+
+-- Version Label inside Sidebar (Bottom)
+local verLabel = Instance.new("TextLabel")
+verLabel.Size = UDim2.new(1, 0, 0, 20)
+verLabel.Position = UDim2.new(0, 0, 1, -25)
+verLabel.BackgroundTransparency = 1
+verLabel.Text = VERSION
+verLabel.TextColor3 = C.sideText
+verLabel.TextSize = 10
+verLabel.Font = Enum.Font.Gotham
+verLabel.ZIndex = 2
+verLabel.Parent = sidebar
 
 -- Set first tab active
 tabButtons[1].BackgroundTransparency = 0.8
@@ -1583,12 +1596,80 @@ createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
 
--- 5. Item Scan (Popup)
+-- 5. Zoom Out
+createPlayerToggle(tabPlayer, "🔍", "Zoom Out", 6, function(state)
+    PlayerModule.setZoomOut(state)
+end)
+
+-- 6. Zoom Distance Slider
+local zoomSliderFrame = Instance.new("Frame")
+zoomSliderFrame.Size = UDim2.new(1, -10, 0, 40)
+zoomSliderFrame.BackgroundColor3 = C.sidebar
+zoomSliderFrame.BorderSizePixel = 0
+zoomSliderFrame.LayoutOrder = 7
+zoomSliderFrame.Parent = tabPlayer
+Instance.new("UICorner", zoomSliderFrame).CornerRadius = UDim.new(0, 8)
+
+local zoomLabel = Instance.new("TextLabel")
+zoomLabel.Size = UDim2.new(1, -20, 0, 18)
+zoomLabel.Position = UDim2.new(0, 10, 0, 2)
+zoomLabel.BackgroundTransparency = 1
+zoomLabel.Text = "Zoom Dist: 1000"
+zoomLabel.TextColor3 = C.dim
+zoomLabel.TextSize = 11
+zoomLabel.Font = Enum.Font.Gotham
+zoomLabel.TextXAlignment = Enum.TextXAlignment.Left
+zoomLabel.Parent = zoomSliderFrame
+
+local zoomSliderBg = Instance.new("Frame")
+zoomSliderBg.Size = UDim2.new(1, -20, 0, 5)
+zoomSliderBg.Position = UDim2.new(0, 10, 0, 24)
+zoomSliderBg.BackgroundColor3 = C.cellOff
+zoomSliderBg.BorderSizePixel = 0
+zoomSliderBg.Parent = zoomSliderFrame
+Instance.new("UICorner", zoomSliderBg).CornerRadius = UDim.new(0, 3)
+
+local zoomSliderFill = Instance.new("Frame")
+zoomSliderFill.Size = UDim2.new(0.4, 0, 1, 0) -- 1000/2500 approx
+zoomSliderFill.BackgroundColor3 = C.accent
+zoomSliderFill.BorderSizePixel = 0
+zoomSliderFill.Parent = zoomSliderBg
+Instance.new("UICorner", zoomSliderFill).CornerRadius = UDim.new(0, 3)
+
+local zoomSliderHit = Instance.new("TextButton")
+zoomSliderHit.Size = UDim2.new(1, 0, 0, 16)
+zoomSliderHit.Position = UDim2.new(0, 10, 0, 18)
+zoomSliderHit.BackgroundTransparency = 1
+zoomSliderHit.Text = ""
+zoomSliderHit.Parent = zoomSliderFrame
+
+local zoomDrag = false
+zoomSliderHit.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        zoomDrag = true
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if zoomDrag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local rel = math.clamp((input.Position.X - zoomSliderBg.AbsolutePosition.X) / zoomSliderBg.AbsoluteSize.X, 0, 1)
+        zoomSliderFill.Size = UDim2.new(rel, 0, 1, 0)
+        local val = math.max(math.floor(rel * 2500), 128)
+        PlayerModule.setZoomDistance(val)
+        zoomLabel.Text = "Zoom Dist: " .. val
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        zoomDrag = false
+    end
+end)
+
+-- 7. Item Scan (Popup)
 local scanFrame = Instance.new("Frame")
 scanFrame.Size = UDim2.new(1, -10, 0, 40)
 scanFrame.BackgroundColor3 = C.sidebar
 scanFrame.BorderSizePixel = 0
-scanFrame.LayoutOrder = 6
+scanFrame.LayoutOrder = 8
 scanFrame.Parent = tabPlayer
 Instance.new("UICorner", scanFrame).CornerRadius = UDim.new(0, 8)
 
