@@ -15,7 +15,8 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.2.4" -- Diagnostic Panel Update
+local VERSION = "v1.2.5" -- Debugging UI Load
+print("[CawScript] Current Version: " .. VERSION)
 
 print("[CawScript] Memulai load dependencies...")
 local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
@@ -135,6 +136,7 @@ local C = {
 -- SCREENGUI
 -- ═══════════════════════════════════════
 
+print("[CawScript] Building ScreenGui...")
 local gui = Instance.new("ScreenGui")
 gui.Name = "KolinUI"
 gui.ResetOnSpawn = false
@@ -285,7 +287,7 @@ local tabs = {
     {icon = "🤖", name = "Bot"},
     {icon = "🌍", name = "Clear World"},
     {icon = "👤", name = "Player"},
-    {icon = "🧪", name = "Diagnostic"},
+    {icon = "D", name = "Diagnostic"}, -- Simplified icon for compatibility
 }
 
 local tabButtons = {}
@@ -1627,7 +1629,7 @@ diagPadding.Parent = tabDiag
 local diagTitle = Instance.new("TextLabel")
 diagTitle.Size = UDim2.new(1, 0, 0, 20)
 diagTitle.BackgroundTransparency = 1
-diagTitle.Text = "🧪 System Diagnostic"
+diagTitle.Text = "Diag: System Diagnostic"
 diagTitle.TextColor3 = C.white
 diagTitle.TextSize = 14
 diagTitle.Font = Enum.Font.GothamBold
