@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.2.2" -- Bug Fix Zoom
+local VERSION = "v1.2.3" -- Removed Zoom
 
 print("[CawScript] Memulai load dependencies...")
 local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
@@ -1596,17 +1596,12 @@ createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
 
--- 5. Zoom Out
-createPlayerToggle(tabPlayer, "🔍", "Zoom Out", 6, function(state)
-    PlayerModule.setZoomOut(state)
-end)
-
--- 6. Item Scan (Popup)
+-- 5. Item Scan (Popup)
 local scanFrame = Instance.new("Frame")
 scanFrame.Size = UDim2.new(1, -10, 0, 40)
 scanFrame.BackgroundColor3 = C.sidebar
 scanFrame.BorderSizePixel = 0
-scanFrame.LayoutOrder = 7
+scanFrame.LayoutOrder = 6
 scanFrame.Parent = tabPlayer
 Instance.new("UICorner", scanFrame).CornerRadius = UDim.new(0, 8)
 
