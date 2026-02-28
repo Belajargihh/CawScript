@@ -17,9 +17,13 @@ local AutoPnB = {}
 local Antiban
 local Coordinates
 
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemotePlace = Remotes:WaitForChild("PlayerPlaceItem")
-local RemoteFist  = Remotes:WaitForChild("PlayerFist")
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+local RemotePlace = Remotes and Remotes:WaitForChild("PlayerPlaceItem", 2)
+local RemoteFist  = Remotes and Remotes:WaitForChild("PlayerFist", 2)
+
+if not Remotes then
+    warn("[AutoPnB] ERROR: Remotes folder not found!")
+end
 
 -- ═══════════════════════════════════════
 -- KONFIGURASI
@@ -45,11 +49,12 @@ AutoPnB._thread     = nil
 -- INTERNAL
 -- ═══════════════════════════════════════
 
-local function doPlace(gridX, gridY, itemId)
+    if not RemotePlace then return end
     RemotePlace:FireServer(Vector2.new(gridX, gridY), itemId)
 end
 
 local function doPunch(gridX, gridY)
+    if not RemoteFist then return end
     RemoteFist:FireServer(Vector2.new(gridX, gridY))
 end
 

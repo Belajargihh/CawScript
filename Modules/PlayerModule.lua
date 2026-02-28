@@ -137,11 +137,7 @@ function PlayerModule.setInfiniteJump(state)
     end
 end
 
-    if not state then
-        local mod = getGameMovementModule()
-        if mod then mod.MaxJump = 1 end
-    end
-end
+
 
 -- ═══════════════════════════════════════
 -- INIT

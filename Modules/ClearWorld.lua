@@ -10,8 +10,13 @@ local ClearWorld = {}
 -- ═══════════════════════════════════════
 local Antiban
 
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local RemoteFist = Remotes:WaitForChild("PlayerFist")
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+local RemoteFist = Remotes and Remotes:WaitForChild("PlayerFist", 2)
+
+if not Remotes then
+    warn("[ClearWorld] ERROR: Remotes folder not found!")
+end
+
 
 -- ═══════════════════════════════════════
 -- CONFIG

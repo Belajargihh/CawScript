@@ -49,6 +49,7 @@ if not RemotePlace then
     warn("[CawScript] WARNING: Remote PlayerPlaceItem tidak ditemukan! Fitur Auto PnB & Select Item mungkin tidak jalan.")
 end
 
+
 local detectCallback = nil
 local hookSuccess = false
 
