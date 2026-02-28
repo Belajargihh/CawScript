@@ -18,33 +18,7 @@ local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 local VERSION = "v1.2.5" -- Debugging UI Load
 print("[CawScript] Current Version: " .. VERSION)
 
--- ═══════════════════════════════════════
--- LOADING OVERLAY
--- ═══════════════════════════════════════
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "CawLoading"
-loadingGui.DisplayOrder = 1000
-local guiParent; pcall(function() guiParent = gethui() end)
-if not guiParent then pcall(function() guiParent = game:GetService("CoreGui") end) end
-loadingGui.Parent = guiParent or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
-
-local loadFrame = Instance.new("Frame", loadingGui)
-loadFrame.Size = UDim2.new(0, 250, 0, 60)
-loadFrame.Position = UDim2.new(0.5, -125, 0.5, -30)
-loadFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-loadFrame.BorderSizePixel = 0
-Instance.new("UICorner", loadFrame).CornerRadius = UDim.new(0, 8)
-
-local loadText = Instance.new("TextLabel", loadFrame)
-loadText.Size = UDim2.new(1, 0, 1, 0)
-loadText.BackgroundTransparency = 1
-loadText.Text = "🚀 CawScript Loading..."
-loadText.TextColor3 = Color3.new(1,1,1)
-loadText.TextSize = 14
-loadText.Font = Enum.Font.GothamBold
-
 local function updateLoad(status)
-    loadText.Text = "🚀 " .. status
     print("[CawScript] " .. status)
 end
 
@@ -58,8 +32,7 @@ local function safeLoad(name, path)
     end)
     if not success then
         warn("[CawScript] FAILED TO LOAD " .. name .. ": " .. tostring(result))
-        updateLoad("FAIL: " .. name)
-        task.wait(1)
+        task.wait(0.5)
         return nil
     end
     return result
@@ -1690,4 +1663,4 @@ spawn(function()
     end
 end)
 
-print("[CawScript] UI Berhasil dimuat! ✅")
+updateLoad("UI Berhasil dimuat! ✅")
