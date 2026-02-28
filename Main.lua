@@ -18,14 +18,9 @@ local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 local VERSION = "v1.2.5" -- Debugging UI Load
 print("[CawScript] Current Version: " .. VERSION)
 
-local function updateLoad(status)
-    print("[CawScript] " .. status)
-end
-
-updateLoad("Loading Dependencies...")
+-- Dependencies Loading logic starts here
 
 local function safeLoad(name, path)
-    updateLoad("Loading: " .. name .. "...")
     local success, result = pcall(function()
         local code = game:HttpGet(GITHUB_BASE .. path .. NOCACHE)
         return loadstring(code)()
@@ -47,7 +42,6 @@ local ManagerModule = safeLoad("ManagerModule", "Modules/ManagerModule.lua")
 local PlayerModule = safeLoad("PlayerModule", "Modules/PlayerModule.lua")
 local ItemScanner  = safeLoad("ItemScanner", "Modules/ItemScanner.lua")
 
-updateLoad("Initializing Modules...")
 if AutoPnB and Coordinates and Antiban then pcall(function() AutoPnB.init(Coordinates, Antiban) end) end
 if ClearWorld and Antiban then pcall(function() ClearWorld.init(Antiban) end) end
 if ManagerModule and Coordinates and Antiban and BackpackSync then 
@@ -55,7 +49,6 @@ if ManagerModule and Coordinates and Antiban and BackpackSync then
 end
 if PlayerModule then pcall(function() PlayerModule.init() end) end
 
-updateLoad("Connecting Remotes...")
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -1663,4 +1656,3 @@ spawn(function()
     end
 end)
 
-updateLoad("UI Berhasil dimuat! ✅")
