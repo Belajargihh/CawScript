@@ -49,7 +49,7 @@ end)
 -- 3. UI Super Simpel (Tanpa gethui/CoreGui failure)
 local sg = Instance.new("ScreenGui")
 sg.Name = "SuperDiagUI"
-sg.Parent = player:WaitForChild("PlayerGui") -- Pake PlayerGui karena gethui bermasalah di Delta kadang
+sg.Parent = player:WaitForChild("PlayerGui", 5) -- Pake PlayerGui karena gethui bermasalah di Delta kadang
 
 local bg = Instance.new("Frame")
 bg.Size = UDim2.new(0, 300, 0, 100)

@@ -14,7 +14,7 @@ end
 
 -- 1. UI SETUP
 local player = game:GetService("Players").LocalPlayer
-local pgui = player:WaitForChild("PlayerGui")
+local pgui = player:WaitForChild("PlayerGui", 5)
 
 -- Hapus yang lama
 if pgui:FindFirstChild("GemSpySimple") then pgui.GemSpySimple:Destroy() end

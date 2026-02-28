@@ -5,8 +5,8 @@
 ]]
 
 local player = game:GetService("Players").LocalPlayer
-local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-local MovementFolder = Remotes:WaitForChild("PlayerMovementPackets")
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
+local MovementFolder = Remotes and Remotes:WaitForChild("PlayerMovementPackets", 5)
 
 local results = {}
 local lastPackets = {} -- Untuk menghindari spam data yang sama

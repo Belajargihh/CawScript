@@ -18,24 +18,71 @@ local NOCACHE = "?t=" .. tostring(math.floor(tick()))
 local VERSION = "v1.2.5" -- Debugging UI Load
 print("[CawScript] Current Version: " .. VERSION)
 
-print("[CawScript] Memulai load dependencies...")
-local AutoPnB      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/AutoPnB.lua" .. NOCACHE))()
-local Antiban      = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Antiban.lua" .. NOCACHE))()
-local Coordinates  = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/Coordinates.lua" .. NOCACHE))()
-local BackpackSync = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/BackpackSync.lua" .. NOCACHE))()
-local ClearWorld   = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ClearWorld.lua" .. NOCACHE))()
+-- ═══════════════════════════════════════
+-- LOADING OVERLAY
+-- ═══════════════════════════════════════
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "CawLoading"
+loadingGui.DisplayOrder = 1000
+local guiParent; pcall(function() guiParent = gethui() end)
+if not guiParent then pcall(function() guiParent = game:GetService("CoreGui") end) end
+loadingGui.Parent = guiParent or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
 
-print("[CawScript] Initializing modules...")
-AutoPnB.init(Coordinates, Antiban)
-ClearWorld.init(Antiban)
+local loadFrame = Instance.new("Frame", loadingGui)
+loadFrame.Size = UDim2.new(0, 250, 0, 60)
+loadFrame.Position = UDim2.new(0.5, -125, 0.5, -30)
+loadFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+loadFrame.BorderSizePixel = 0
+Instance.new("UICorner", loadFrame).CornerRadius = UDim.new(0, 8)
 
-local ManagerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ManagerModule.lua" .. NOCACHE))()
-ManagerModule.init(Coordinates, Antiban, BackpackSync)
+local loadText = Instance.new("TextLabel", loadFrame)
+loadText.Size = UDim2.new(1, 0, 1, 0)
+loadText.BackgroundTransparency = 1
+loadText.Text = "🚀 CawScript Loading..."
+loadText.TextColor3 = Color3.new(1,1,1)
+loadText.TextSize = 14
+loadText.Font = Enum.Font.GothamBold
 
-local PlayerModule = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/PlayerModule.lua" .. NOCACHE))()
--- PlayerModule.init() dipanggil setelah hook setup di bawah
+local function updateLoad(status)
+    loadText.Text = "🚀 " .. status
+    print("[CawScript] " .. status)
+end
 
-local ItemScanner = loadstring(game:HttpGet(GITHUB_BASE .. "Modules/ItemScanner.lua" .. NOCACHE))()
+updateLoad("Loading Dependencies...")
+
+local function safeLoad(name, path)
+    updateLoad("Loading: " .. name .. "...")
+    local success, result = pcall(function()
+        local code = game:HttpGet(GITHUB_BASE .. path .. NOCACHE)
+        return loadstring(code)()
+    end)
+    if not success then
+        warn("[CawScript] FAILED TO LOAD " .. name .. ": " .. tostring(result))
+        updateLoad("FAIL: " .. name)
+        task.wait(1)
+        return nil
+    end
+    return result
+end
+
+local AutoPnB      = safeLoad("AutoPnB", "Modules/AutoPnB.lua")
+local Antiban      = safeLoad("Antiban", "Modules/Antiban.lua")
+local Coordinates  = safeLoad("Coordinates", "Modules/Coordinates.lua")
+local BackpackSync = safeLoad("BackpackSync", "Modules/BackpackSync.lua")
+local ClearWorld   = safeLoad("ClearWorld", "Modules/ClearWorld.lua")
+local ManagerModule = safeLoad("ManagerModule", "Modules/ManagerModule.lua")
+local PlayerModule = safeLoad("PlayerModule", "Modules/PlayerModule.lua")
+local ItemScanner  = safeLoad("ItemScanner", "Modules/ItemScanner.lua")
+
+updateLoad("Initializing Modules...")
+if AutoPnB and Coordinates and Antiban then pcall(function() AutoPnB.init(Coordinates, Antiban) end) end
+if ClearWorld and Antiban then pcall(function() ClearWorld.init(Antiban) end) end
+if ManagerModule and Coordinates and Antiban and BackpackSync then 
+    pcall(function() ManagerModule.init(Coordinates, Antiban, BackpackSync) end)
+end
+if PlayerModule then pcall(function() PlayerModule.init() end) end
+
+updateLoad("Connecting Remotes...")
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
