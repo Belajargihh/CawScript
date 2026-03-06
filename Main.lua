@@ -1706,6 +1706,79 @@ dupeTestTitle.Font = Enum.Font.GothamBold
 dupeTestTitle.LayoutOrder = 4
 dupeTestTitle.Parent = tabDupe
 
+-- Helper: Find Drop remote (try multiple paths)
+local function findDropRemote()
+    local RS = game:GetService("ReplicatedStorage")
+    -- Try direct path
+    local r = nil
+    pcall(function() r = RS:FindFirstChild("Remotes") end)
+    if r then
+        local d = r:FindFirstChild("PlayerDrop")
+        if d then return d end
+    end
+    -- Try recursive search
+    pcall(function() r = RS:FindFirstChild("PlayerDrop", true) end)
+    if r then return r end
+    return nil
+end
+
+local function findPromptRemote()
+    local RS = game:GetService("ReplicatedStorage")
+    local r = nil
+    pcall(function() r = RS:FindFirstChild("UIPromptEvent", true) end)
+    return r
+end
+
+-- DIAGNOSTIC: Scan Remotes Button
+local dupeScan = Instance.new("TextButton")
+dupeScan.Size = UDim2.new(1, 0, 0, 32)
+dupeScan.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+dupeScan.Text = "🔍 SCAN ALL REMOTES (Diagnostic)"
+dupeScan.TextColor3 = C.white
+dupeScan.Font = Enum.Font.GothamBold
+dupeScan.TextSize = 11
+dupeScan.LayoutOrder = 4.5
+dupeScan.Parent = tabDupe
+Instance.new("UICorner", dupeScan).CornerRadius = UDim.new(0, 6)
+
+dupeScan.MouseButton1Click:Connect(function()
+    logDupe("=== SCANNING REMOTES ===")
+    local RS = game:GetService("ReplicatedStorage")
+    
+    -- Scan Remotes folder
+    local remFolder = RS:FindFirstChild("Remotes")
+    if remFolder then
+        logDupe("Remotes folder: FOUND")
+        for _, child in ipairs(remFolder:GetChildren()) do
+            logDupe("  > " .. child.Name .. " [" .. child.ClassName .. "]")
+        end
+    else
+        logDupe("Remotes folder: NOT FOUND")
+        logDupe("Scanning RS children...")
+        for _, child in ipairs(RS:GetChildren()) do
+            logDupe("  > " .. child.Name .. " [" .. child.ClassName .. "]")
+        end
+    end
+    
+    -- Scan Managers
+    local manFolder = RS:FindFirstChild("Managers")
+    if manFolder then
+        logDupe("Managers folder: FOUND")
+        for _, child in ipairs(manFolder:GetDescendants()) do
+            if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+                logDupe("  > " .. child:GetFullName())
+            end
+        end
+    end
+    
+    -- Test our finder
+    local d = findDropRemote()
+    local p = findPromptRemote()
+    logDupe("findDropRemote: " .. tostring(d))
+    logDupe("findPromptRemote: " .. tostring(p))
+    logDupe("=== SCAN DONE ===")
+end)
+
 -- Test 1: SPOOF
 local dupeSpoof = Instance.new("TextButton")
 dupeSpoof.Size = UDim2.new(1, 0, 0, 32)
@@ -1719,9 +1792,8 @@ dupeSpoof.Parent = tabDupe
 Instance.new("UICorner", dupeSpoof).CornerRadius = UDim.new(0, 6)
 
 dupeSpoof.MouseButton1Click:Connect(function()
-    local RDrop, RPrompt
-    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
-    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    local RDrop = findDropRemote()
+    local RPrompt = findPromptRemote()
     if not RDrop then logDupe("ERR: PlayerDrop not found") return end
     if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
@@ -1752,9 +1824,8 @@ dupeLag.Parent = tabDupe
 Instance.new("UICorner", dupeLag).CornerRadius = UDim.new(0, 6)
 
 dupeLag.MouseButton1Click:Connect(function()
-    local RDrop, RPrompt
-    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
-    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    local RDrop = findDropRemote()
+    local RPrompt = findPromptRemote()
     if not RDrop then logDupe("ERR: PlayerDrop not found") return end
     if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
@@ -1790,9 +1861,8 @@ dupeDelay.Parent = tabDupe
 Instance.new("UICorner", dupeDelay).CornerRadius = UDim.new(0, 6)
 
 dupeDelay.MouseButton1Click:Connect(function()
-    local RDrop, RPrompt
-    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
-    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    local RDrop = findDropRemote()
+    local RPrompt = findPromptRemote()
     if not RDrop then logDupe("ERR: PlayerDrop not found") return end
     if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
