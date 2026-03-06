@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.3.4" -- Wave 3 World Manipulation
+local VERSION = "v1.3.5" -- Wave 4 Disconnect/Trade
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -2175,7 +2175,171 @@ dupeCustom.MouseButton1Click:Connect(function()
     logDupe("Cek backpack berubah gak!")
 end)
 
+-- ═══════════════════════════════════════
+-- WAVE 4: DISCONNECT / TRADE EXPLOITS
+-- ═══════════════════════════════════════
 
+local wave4Title = Instance.new("TextLabel")
+wave4Title.Size = UDim2.new(1, 0, 0, 18)
+wave4Title.BackgroundTransparency = 1
+wave4Title.Text = "💥 Wave 4: Disconnect / Trade"
+wave4Title.TextColor3 = Color3.fromRGB(255, 100, 100)
+wave4Title.TextSize = 12
+wave4Title.Font = Enum.Font.GothamBold
+wave4Title.LayoutOrder = 16
+wave4Title.Parent = tabDupe
+
+-- METHOD: Disconnect Exploit (Place → Crash)
+local dupeDisconnect = Instance.new("TextButton")
+dupeDisconnect.Size = UDim2.new(1, 0, 0, 32)
+dupeDisconnect.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+dupeDisconnect.Text = "💥 PLACE ALL → FORCE DISCONNECT"
+dupeDisconnect.TextColor3 = C.white
+dupeDisconnect.Font = Enum.Font.GothamBold
+dupeDisconnect.TextSize = 11
+dupeDisconnect.LayoutOrder = 17
+dupeDisconnect.Parent = tabDupe
+Instance.new("UICorner", dupeDisconnect).CornerRadius = UDim.new(0, 6)
+
+dupeDisconnect.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RPlace
+    pcall(function() RPlace = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerPlaceItem") end)
+    if not RPlace then logDupe("ERR: PlayerPlaceItem not found") return end
+    
+    local gx, gy
+    pcall(function() gx, gy = Coordinates.getGridPosition() end)
+    if not gx then logDupe("ERR: No position") return end
+    
+    logDupe("=== DISCONNECT EXPLOIT ===")
+    logDupe("⚠️ Game akan CRASH dalam 3 detik!")
+    logDupe("Placing items rapidly...")
+    
+    -- Place item di berbagai posisi (atas, kanan, kiri)
+    local positions = {
+        {gx+1, gy}, {gx-1, gy}, {gx, gy+1},
+        {gx+2, gy}, {gx-2, gy}, {gx, gy+2},
+        {gx+1, gy+1}, {gx-1, gy+1}, {gx+2, gy+1},
+        {gx+1, gy-1},
+    }
+    
+    for i, pos in ipairs(positions) do
+        pcall(function()
+            RPlace:FireServer(Vector2.new(pos[1], pos[2]), 2) -- 2 = dirt
+        end)
+    end
+    
+    logDupe("Placed " .. #positions .. " blocks!")
+    logDupe("Force disconnecting NOW...")
+    
+    task.wait(0.1)
+    
+    -- Force disconnect/crash
+    pcall(function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
+    end)
+    -- Backup crash
+    task.wait(1)
+    pcall(function()
+        player:Kick("Dupe test disconnect")
+    end)
+end)
+
+-- METHOD: Place → Rejoin (Softer version)
+local dupeRejoin = Instance.new("TextButton")
+dupeRejoin.Size = UDim2.new(1, 0, 0, 32)
+dupeRejoin.BackgroundColor3 = Color3.fromRGB(200, 100, 30)
+dupeRejoin.Text = "🔄 PLACE 5x → REJOIN SAME SERVER"
+dupeRejoin.TextColor3 = C.white
+dupeRejoin.Font = Enum.Font.GothamBold
+dupeRejoin.TextSize = 11
+dupeRejoin.LayoutOrder = 18
+dupeRejoin.Parent = tabDupe
+Instance.new("UICorner", dupeRejoin).CornerRadius = UDim.new(0, 6)
+
+dupeRejoin.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RPlace
+    pcall(function() RPlace = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerPlaceItem") end)
+    if not RPlace then logDupe("ERR: PlayerPlaceItem not found") return end
+    
+    local gx, gy
+    pcall(function() gx, gy = Coordinates.getGridPosition() end)
+    if not gx then logDupe("ERR: No position") return end
+    
+    logDupe("=== PLACE → REJOIN ===")
+    logDupe("Placing 5 blocks...")
+    
+    for i = 1, 5 do
+        pcall(function()
+            RPlace:FireServer(Vector2.new(gx + i, gy), 2)
+        end)
+        task.wait(0.05)
+    end
+    
+    logDupe("Placed! Rejoining same server...")
+    task.wait(0.2)
+    
+    -- Rejoin same server via JobId
+    local jobId = game.JobId
+    logDupe("JobId: " .. tostring(jobId))
+    
+    pcall(function()
+        game:GetService("TeleportService"):TeleportToPlaceInstance(
+            game.PlaceId, jobId, player
+        )
+    end)
+    
+    logDupe("Teleporting...")
+end)
+
+-- METHOD: Trade Sniffer (Listen to trade protocol)
+local dupeTradeSpy = Instance.new("TextButton")
+dupeTradeSpy.Size = UDim2.new(1, 0, 0, 32)
+dupeTradeSpy.BackgroundColor3 = Color3.fromRGB(50, 150, 200)
+dupeTradeSpy.Text = "👂 START TRADE LISTENER"
+dupeTradeSpy.TextColor3 = C.white
+dupeTradeSpy.Font = Enum.Font.GothamBold
+dupeTradeSpy.TextSize = 11
+dupeTradeSpy.LayoutOrder = 19
+dupeTradeSpy.Parent = tabDupe
+Instance.new("UICorner", dupeTradeSpy).CornerRadius = UDim.new(0, 6)
+
+local tradeListening = false
+dupeTradeSpy.MouseButton1Click:Connect(function()
+    if tradeListening then
+        logDupe("Trade listener already active!")
+        return
+    end
+    tradeListening = true
+    dupeTradeSpy.Text = "✅ TRADE LISTENER ACTIVE"
+    dupeTradeSpy.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+    
+    local RS = game:GetService("ReplicatedStorage")
+    local RTrade
+    pcall(function() RTrade = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerTrade") end)
+    
+    if not RTrade then logDupe("ERR: PlayerTrade not found") return end
+    
+    logDupe("=== TRADE LISTENER ON ===")
+    logDupe("Buka trade dengan player lain!")
+    logDupe("Semua trade packet akan di-log...")
+    
+    RTrade.OnClientEvent:Connect(function(...)
+        local args = {...}
+        logDupe("📩 TRADE RECV:")
+        for i, v in ipairs(args) do
+            local t = typeof(v)
+            if t == "table" then
+                for k, val in pairs(v) do
+                    logDupe("  [" .. tostring(i) .. "]." .. tostring(k) .. " = " .. tostring(val))
+                end
+            else
+                logDupe("  [" .. tostring(i) .. "] = " .. tostring(v) .. " (" .. t .. ")")
+            end
+        end
+    end)
+end)
 -- ═══════════════════════════════════════
 -- REAL-TIME UPDATE LOOP
 -- ═══════════════════════════════════════
