@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.4" -- Walking Auto Collect PnB
+local VERSION = "v1.4.5" -- Debug Auto Collect PnB
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here

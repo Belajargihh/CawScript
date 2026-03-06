@@ -97,47 +97,70 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return end
     
-    local dropsFolder = workspace:FindFirstChild("Drops")
-    if not dropsFolder then return end
+    local dropsFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items")
+    if not dropsFolder then 
+        print("[AutoPnB] No Drops/Items folder found in workspace")
+        return 
+    end
     
     local toCollect = {}
+    local allItems = dropsFolder:GetDescendants()
+    -- print("[AutoPnB] Scanning " .. #allItems .. " items in " .. dropsFolder.Name)
     
-    -- Scan for items in the Drops folder
-    for _, item in ipairs(dropsFolder:GetDescendants()) do
+    -- Scan for items
+    for _, item in ipairs(allItems) do
         if item:IsA("BasePart") or item:IsA("Model") then
-            local pos = item:GetPivot().Position
-            
-            -- Check if drop is near any target grid position
-            for _, gpos in ipairs(targetGridPositions) do
-                local worldX = gpos[1] * BLOCK_SIZE
-                local worldY = gpos[2] * BLOCK_SIZE
-                local dx = math.abs(pos.X - worldX)
-                local dy = math.abs(pos.Y - worldY)
-                
-                -- Detect items within 2 block radius of target
-                if dx < BLOCK_SIZE * 2 and dy < BLOCK_SIZE * 2 then
-                    table.insert(toCollect, {item = item, pos = pos})
-                    break
+            -- Only consider things that look like drops (have an ID or are small)
+            local isDrop = item:GetAttribute("id") or item:GetAttribute("ItemId")
+            if not isDrop then
+                -- Heuristic: drops are usually small and not anchored
+                if item:IsA("BasePart") and item.Size.Magnitude < 10 and not item.Anchored then
+                    isDrop = true
+                end
+            end
+
+            if isDrop then
+                local ok, pos = pcall(function() return item:GetPivot().Position end)
+                if ok and pos then
+                    -- Check if drop is near any target grid position
+                    for _, gpos in ipairs(targetGridPositions) do
+                        local worldX = gpos[1] * BLOCK_SIZE
+                        local worldY = gpos[2] * BLOCK_SIZE
+                        local dx = math.abs(pos.X - worldX)
+                        local dy = math.abs(pos.Y - worldY)
+                        
+                        -- Detect items within 4 block radius of target (increased)
+                        if dx < BLOCK_SIZE * 4 and dy < BLOCK_SIZE * 4 then
+                            table.insert(toCollect, {item = item, pos = pos})
+                            break
+                        end
+                    end
                 end
             end
         end
     end
     
-    if #toCollect == 0 then return end
+    if #toCollect == 0 then 
+        -- print("[AutoPnB] No matching drops found near targets")
+        return 
+    end
     
+    print("[AutoPnB] Found " .. #toCollect .. " items to collect. Walking...")
     AutoPnB._statusText = "Walking to " .. #toCollect .. " drops..."
     
     for _, data in ipairs(toCollect) do
         if not AutoPnB._running then break end
-        if not data.item.Parent then continue end -- Item picked up already
+        if not data.item.Parent then continue end
         
+        -- print("[AutoPnB] Walking to item at: " .. tostring(data.pos))
         walkTo(data.pos, 1.5)
         AutoPnB._collectCount = AutoPnB._collectCount + 1
-        task.wait(0.1)
+        task.wait(0.05)
     end
     
     -- Return to starting position
     if AutoPnB._running then
+        -- print("[AutoPnB] Returning to origin: " .. tostring(originPos))
         AutoPnB._statusText = "Returning to origin..."
         walkTo(originPos, 2)
     end
