@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.3.1" -- Remote Scanner Diagnostic
+local VERSION = "v1.3.2" -- Wave 2 Dupe Tests
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -1879,6 +1879,163 @@ dupeDelay.MouseButton1Click:Connect(function()
         })
     end)
     logDupe("DONE! Server masih terima kah?")
+end)
+
+-- ═══════════════════════════════════════
+-- WAVE 2: ADVANCED DUPE TESTS
+-- ═══════════════════════════════════════
+
+local wave2Title = Instance.new("TextLabel")
+wave2Title.Size = UDim2.new(1, 0, 0, 18)
+wave2Title.BackgroundTransparency = 1
+wave2Title.Text = "🔬 Wave 2: Advanced Tests"
+wave2Title.TextColor3 = C.white
+wave2Title.TextSize = 12
+wave2Title.Font = Enum.Font.GothamBold
+wave2Title.LayoutOrder = 8
+wave2Title.Parent = tabDupe
+
+-- METHOD A: Place-Break Race Condition
+local dupePlaceBreak = Instance.new("TextButton")
+dupePlaceBreak.Size = UDim2.new(1, 0, 0, 32)
+dupePlaceBreak.BackgroundColor3 = Color3.fromRGB(220, 50, 180)
+dupePlaceBreak.Text = "⭐ PLACE-BREAK RACE (Slot 1)"
+dupePlaceBreak.TextColor3 = C.white
+dupePlaceBreak.Font = Enum.Font.GothamBold
+dupePlaceBreak.TextSize = 11
+dupePlaceBreak.LayoutOrder = 9
+dupePlaceBreak.Parent = tabDupe
+Instance.new("UICorner", dupePlaceBreak).CornerRadius = UDim.new(0, 6)
+
+dupePlaceBreak.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RPlace, RFist
+    pcall(function() RPlace = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerPlaceItem") end)
+    pcall(function() RFist = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerFist") end)
+    
+    if not RPlace then logDupe("ERR: PlayerPlaceItem not found") return end
+    if not RFist then logDupe("ERR: PlayerFist not found") return end
+    
+    -- Get player grid position
+    local gx, gy
+    pcall(function() gx, gy = Coordinates.getGridPosition() end)
+    if not gx then logDupe("ERR: Can't get position") return end
+    
+    -- Place to the right of player
+    local targetX = gx + 1
+    local targetY = gy
+    
+    logDupe("=== PLACE-BREAK RACE ===")
+    logDupe("Pos: " .. gx .. "," .. gy .. " Target: " .. targetX .. "," .. targetY)
+    
+    -- Fire Place + Fist with ZERO delay
+    logDupe("Firing Place + Fist (0 delay)...")
+    pcall(function() RPlace:FireServer(Vector2.new(targetX, targetY), 1) end)
+    pcall(function() RFist:FireServer(Vector2.new(targetX, targetY)) end)
+    logDupe("Instant fire done!")
+    
+    -- Also try with micro delays
+    task.wait(0.5)
+    logDupe("Trying with 0.02s delay...")
+    pcall(function() RPlace:FireServer(Vector2.new(targetX, targetY), 1) end)
+    task.wait(0.02)
+    pcall(function() RFist:FireServer(Vector2.new(targetX, targetY)) end)
+    logDupe("Done! Check slot 1 count vs ground items.")
+end)
+
+-- METHOD B: Inventory Direct Manipulation
+local dupeInvDirect = Instance.new("TextButton")
+dupeInvDirect.Size = UDim2.new(1, 0, 0, 32)
+dupeInvDirect.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+dupeInvDirect.Text = "📦 INVENTORY DIRECT (SetAmount)"
+dupeInvDirect.TextColor3 = C.white
+dupeInvDirect.Font = Enum.Font.GothamBold
+dupeInvDirect.TextSize = 11
+dupeInvDirect.LayoutOrder = 10
+dupeInvDirect.Parent = tabDupe
+Instance.new("UICorner", dupeInvDirect).CornerRadius = UDim.new(0, 6)
+
+dupeInvDirect.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RSetAmt, RSetItem
+    pcall(function() RSetAmt = RS:FindFirstChild("Remotes"):FindFirstChild("InventorySetAmount") end)
+    pcall(function() RSetItem = RS:FindFirstChild("Remotes"):FindFirstChild("InventorySetItem") end)
+    
+    logDupe("=== INVENTORY DIRECT TEST ===")
+    logDupe("InventorySetAmount: " .. tostring(RSetAmt ~= nil))
+    logDupe("InventorySetItem: " .. tostring(RSetItem ~= nil))
+    
+    if RSetAmt then
+        logDupe("Trying SetAmount(1, 999)...")
+        pcall(function() RSetAmt:FireServer(1, 999) end)
+        logDupe("Trying SetAmount({slot=1, amount=999})...")
+        pcall(function() RSetAmt:FireServer({slot = 1, amount = 999}) end)
+    end
+    
+    if RSetItem then
+        logDupe("Trying SetItem(1, 'dirt', 999)...")
+        pcall(function() RSetItem:FireServer(1, "dirt", 999) end)
+    end
+    
+    logDupe("DONE! Cek backpack berubah gak.")
+end)
+
+-- METHOD C: Drop + Instant Pickup (Teleport)
+local dupeDropPickup = Instance.new("TextButton")
+dupeDropPickup.Size = UDim2.new(1, 0, 0, 32)
+dupeDropPickup.BackgroundColor3 = Color3.fromRGB(200, 180, 0)
+dupeDropPickup.Text = "🏃 DROP + INSTANT PICKUP"
+dupeDropPickup.TextColor3 = Color3.fromRGB(20, 20, 20)
+dupeDropPickup.Font = Enum.Font.GothamBold
+dupeDropPickup.TextSize = 11
+dupeDropPickup.LayoutOrder = 11
+dupeDropPickup.Parent = tabDupe
+Instance.new("UICorner", dupeDropPickup).CornerRadius = UDim.new(0, 6)
+
+dupeDropPickup.MouseButton1Click:Connect(function()
+    local RDrop = findDropRemote()
+    local RPrompt = findPromptRemote()
+    if not RDrop or not RPrompt then logDupe("ERR: Remotes missing") return end
+    
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then logDupe("ERR: No character") return end
+    
+    logDupe("=== DROP + PICKUP TEST ===")
+    logDupe("Step 1: Drop item from Slot 1...")
+    pcall(function() RDrop:FireServer(1) end)
+    task.wait(0.1)
+    pcall(function()
+        RPrompt:FireServer({ ButtonAction = "drp", Inputs = { amt = "1" } })
+    end)
+    
+    logDupe("Step 2: Scanning Drops folder...")
+    task.wait(0.3)
+    
+    local dropsFolder = workspace:FindFirstChild("Drops")
+    if dropsFolder then
+        local items = dropsFolder:GetChildren()
+        logDupe("Found " .. #items .. " items on ground")
+        
+        if #items > 0 then
+            -- Teleport to nearest item
+            local nearest = items[#items] -- Most recent drop
+            local pos = nil
+            pcall(function() pos = nearest:GetPivot().Position end)
+            
+            if pos then
+                logDupe("Step 3: Teleporting to item...")
+                pcall(function()
+                    root.CFrame = CFrame.new(pos)
+                    root.Velocity = Vector3.new(0,0,0)
+                end)
+                logDupe("Teleported! Check if item picked up + still in inventory.")
+            end
+        end
+    else
+        logDupe("No Drops folder found!")
+    end
+    logDupe("DONE!")
 end)
 
 -- Sniffer Logic Hook
