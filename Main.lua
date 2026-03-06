@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.3.0" -- Dupe Research Tools
+local VERSION = "v1.3.1" -- Remote Scanner Diagnostic
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
