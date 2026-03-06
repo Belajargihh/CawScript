@@ -71,6 +71,15 @@ end
 
 local BLOCK_SIZE = 4.5
 
+-- Fast access to movement packets
+local function getMoveRemote()
+    local folder = Remotes and Remotes:FindFirstChild("PlayerMovementPackets")
+    if folder then
+        -- Returns the first child (dynamic name like Hans_123920)
+        return folder:GetChildren()[1]
+    end
+end
+
 -- Helper: Walk to a position and wait
 local function walkTo(position, timeout)
     local player = game:GetService("Players").LocalPlayer
@@ -84,8 +93,8 @@ local function walkTo(position, timeout)
     hum.Sit = false
     
     -- In side-scroller, we walk mostly horizontally (X) and vertically (Y)
-    -- Depth (Z) is kept consistent
     local walkPos = Vector3.new(position.X, position.Y, hrp.Position.Z)
+    local remote = getMoveRemote()
     
     hum:MoveTo(walkPos)
     
@@ -97,10 +106,17 @@ local function walkTo(position, timeout)
     local start = tick()
     local lastDist = (hrp.Position - walkPos).Magnitude
     local stuckTick = 0
+    local lastPacket = 0
     
     while not finished and tick() - start < (timeout or 2) do
-        task.wait(0.1)
+        task.wait(0.05)
         if not AutoPnB._running then break end
+        
+        -- Fire movement packet to sync with server (Anti-Damage)
+        if remote and tick() - lastPacket > 0.1 then
+            remote:FireServer(Vector2.new(hrp.Position.X, hrp.Position.Y))
+            lastPacket = tick()
+        end
         
         local currentDist = (hrp.Position - walkPos).Magnitude
         
