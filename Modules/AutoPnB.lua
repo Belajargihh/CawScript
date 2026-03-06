@@ -53,6 +53,7 @@ AutoPnB._thread       = nil
 -- INTERNAL
 -- ═══════════════════════════════════════
 
+local function doPlace(gridX, gridY, itemId)
     if not RemotePlace then return end
     RemotePlace:FireServer(Vector2.new(gridX, gridY), itemId)
 end
@@ -202,7 +203,8 @@ local function pnbLoop()
                         for _, offset in ipairs(AutoPnB._targets) do
                             table.insert(gridPositions, {playerX + offset[1], playerY + offset[2]})
                         end
-                        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        local lp = game:GetService("Players").LocalPlayer
+                        local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
                         if root then
                             collectNearbyDrops(root.Position, gridPositions)
                         end
