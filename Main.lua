@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.0" -- Removed Dupe Research
+local VERSION = "v1.4.1" -- Restored World Scanner
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -1611,6 +1611,26 @@ end)
 createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
+
+-- 5. Scan World Items
+local scanBtn = Instance.new("TextButton")
+scanBtn.Size = UDim2.new(1, -10, 0, 36)
+scanBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+scanBtn.Text = "🔍 Scan World Items"
+scanBtn.TextColor3 = C.white
+scanBtn.TextSize = 12
+scanBtn.Font = Enum.Font.GothamBold
+scanBtn.BorderSizePixel = 0
+scanBtn.LayoutOrder = 6
+scanBtn.Parent = tabPlayer
+Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 8)
+
+scanBtn.MouseButton1Click:Connect(function()
+    if ItemScanner then
+        ItemScanner.showPopup(gui)
+    end
+end)
+
 -- ═══════════════════════════════════════
 -- REAL-TIME UPDATE LOOP
 -- ═══════════════════════════════════════
