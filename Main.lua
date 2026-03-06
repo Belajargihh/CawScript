@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.8" -- PnB Sequence & X/Y Plane Fix
+local VERSION = "v1.4.9" -- Robust Walk & Proximity Fix
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here

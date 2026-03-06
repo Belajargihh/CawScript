@@ -79,9 +79,13 @@ local function walkTo(position, timeout)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return end
     
-    -- In side-scroller, we walk mostly horizontally (X)
-    -- We keep the Y and Z consistent with current position to avoid glitches
-    local walkPos = Vector3.new(position.X, hrp.Position.Y, hrp.Position.Z)
+    -- Force character to be movable
+    hum.PlatformStand = false
+    hum.Sit = false
+    
+    -- In side-scroller, we walk mostly horizontally (X) and vertically (Y)
+    -- Depth (Z) is kept consistent
+    local walkPos = Vector3.new(position.X, position.Y, hrp.Position.Z)
     
     hum:MoveTo(walkPos)
     
@@ -91,15 +95,23 @@ local function walkTo(position, timeout)
     end)
     
     local start = tick()
-    local lastX = hrp.Position.X
+    local lastDist = (hrp.Position - walkPos).Magnitude
     local stuckTick = 0
     
     while not finished and tick() - start < (timeout or 2) do
         task.wait(0.1)
         if not AutoPnB._running then break end
         
-        -- Check if moving horizontally
-        if math.abs(hrp.Position.X - lastX) < 0.1 then
+        local currentDist = (hrp.Position - walkPos).Magnitude
+        
+        -- Proximity Check (Arrived early)
+        if currentDist < 2.5 then
+            finished = true
+            break
+        end
+        
+        -- Stuck Check
+        if math.abs(currentDist - lastDist) < 0.1 then
             stuckTick = stuckTick + 1
             if stuckTick > 5 then
                 hum.Jump = true
@@ -108,7 +120,7 @@ local function walkTo(position, timeout)
         else
             stuckTick = 0
         end
-        lastX = hrp.Position.X
+        lastDist = currentDist
     end
     
     if connection then connection:Disconnect() end
