@@ -79,8 +79,9 @@ local function walkTo(position, timeout)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return end
     
-    -- Ensure destination is at the same height as the character to avoid walking into the ground/sky
-    local walkPos = Vector3.new(position.X, hrp.Position.Y, position.Z)
+    -- In side-scroller, we walk mostly horizontally (X)
+    -- We keep the Y and Z consistent with current position to avoid glitches
+    local walkPos = Vector3.new(position.X, hrp.Position.Y, hrp.Position.Z)
     
     hum:MoveTo(walkPos)
     
@@ -90,25 +91,24 @@ local function walkTo(position, timeout)
     end)
     
     local start = tick()
-    local lastPos = hrp.Position
+    local lastX = hrp.Position.X
     local stuckTick = 0
     
     while not finished and tick() - start < (timeout or 2) do
         task.wait(0.1)
         if not AutoPnB._running then break end
         
-        -- Check if moving
-        if (hrp.Position - lastPos).Magnitude < 0.1 then
+        -- Check if moving horizontally
+        if math.abs(hrp.Position.X - lastX) < 0.1 then
             stuckTick = stuckTick + 1
             if stuckTick > 5 then
-                -- Try to jump if stuck
                 hum.Jump = true
                 stuckTick = 0
             end
         else
             stuckTick = 0
         end
-        lastPos = hrp.Position
+        lastX = hrp.Position.X
     end
     
     if connection then connection:Disconnect() end
@@ -150,12 +150,12 @@ local function collectNearbyDrops(originPos, targetGridPositions)
                     -- Check if drop is near any target grid position
                     for _, gpos in ipairs(targetGridPositions) do
                         local projX = gpos[1] * BLOCK_SIZE
-                        local projZ = gpos[2] * BLOCK_SIZE
+                        local projY = gpos[2] * BLOCK_SIZE
                         local dx = math.abs(pos.X - projX)
-                        local dz = math.abs(pos.Z - projZ)
+                        local dy = math.abs(pos.Y - projY)
                         
-                        -- Detect items within 4 block radius of target grid (XZ PLANE)
-                        if dx < BLOCK_SIZE * 4 and dz < BLOCK_SIZE * 4 then
+                        -- Detect items within 4 block radius of target grid (XY PLANE)
+                        if dx < BLOCK_SIZE * 4 and dy < BLOCK_SIZE * 4 then
                             table.insert(toCollect, {item = item, pos = pos})
                             break
                         end
@@ -213,19 +213,21 @@ local function pnbLoop()
         if not hrp then task.wait(1) continue end
         local originPos = hrp.Position
         
-        AutoPnB._cycleCount = AutoPnB._cycleCount + 1
-        
-        -- Loop setiap target offset
+        -- 1. PROCESS ALL TARGETS
+        local activeGridPositions = {}
         for _, offset in ipairs(AutoPnB._targets) do
             if not AutoPnB._running then break end
             
             local targetX = playerX + offset[1]
             local targetY = playerY + offset[2]
+            table.insert(activeGridPositions, {targetX, targetY})
+            
             AutoPnB._currentTarget = string.format("X=%d, Y=%d", targetX, targetY)
             
             -- Place (jika aktif)
             if AutoPnB.ENABLE_PLACE then
-                AutoPnB._statusText = "Place di " .. AutoPnB._currentTarget
+                AutoPnB._statusText = "Placing..."
+                log("Place at " .. AutoPnB._currentTarget)
                 if Antiban then
                     Antiban.throttle(function()
                         doPlace(targetX, targetY, AutoPnB.ITEM_ID)
@@ -239,7 +241,8 @@ local function pnbLoop()
             
             -- Punch / Break (jika aktif)
             if AutoPnB.ENABLE_BREAK then
-                AutoPnB._statusText = "Punch di " .. AutoPnB._currentTarget
+                AutoPnB._statusText = "Breaking..."
+                log("Break at " .. AutoPnB._currentTarget)
                 if Antiban then
                     Antiban.throttle(function()
                         doPunch(targetX, targetY)
@@ -251,17 +254,12 @@ local function pnbLoop()
             end
         end
         
-        if AutoPnB._running then
-            -- Collect drops near target positions
-            if AutoPnB.ENABLE_COLLECT then
-                local gridPositions = {}
-                for _, offset in ipairs(AutoPnB._targets) do
-                    table.insert(gridPositions, {playerX + offset[1], playerY + offset[2]})
-                end
-                collectNearbyDrops(originPos, gridPositions)
-            end
+        -- 2. ALL TARGETS FINISHED -> COLLECT
+        if AutoPnB._running and AutoPnB.ENABLE_COLLECT then
+            collectNearbyDrops(originPos, activeGridPositions)
         end
         
+        AutoPnB._cycleCount = AutoPnB._cycleCount + 1
         task.wait(0.1)
     end
     
