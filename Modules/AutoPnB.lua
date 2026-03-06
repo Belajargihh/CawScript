@@ -65,6 +65,29 @@ end
 
 local BLOCK_SIZE = 4.5
 
+-- Helper: Walk to a position and wait
+local function walkTo(position, timeout)
+    local player = game:GetService("Players").LocalPlayer
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    hum:MoveTo(position)
+    
+    local finished = false
+    local connection = hum.MoveToFinished:Connect(function()
+        finished = true
+    end)
+    
+    local start = tick()
+    while not finished and tick() - start < (timeout or 2) do
+        task.wait(0.1)
+        if not AutoPnB._running then break end
+    end
+    
+    if connection then connection:Disconnect() end
+end
+
 -- Collect drops near target grid positions, then return to origin
 local function collectNearbyDrops(originPos, targetGridPositions)
     if not AutoPnB.ENABLE_COLLECT then return end
@@ -72,29 +95,29 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     local player = game:GetService("Players").LocalPlayer
     local char = player and player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return end
+    if not root then return end
     
     local dropsFolder = workspace:FindFirstChild("Drops")
     if not dropsFolder then return end
     
     local toCollect = {}
     
-    for _, item in ipairs(dropsFolder:GetChildren()) do
-        local itemId = item:GetAttribute("id")
-        if itemId then
-            local ok, pos = pcall(function() return item:GetPivot().Position end)
-            if ok and pos then
-                -- Check if drop is near any target grid position
-                for _, gpos in ipairs(targetGridPositions) do
-                    local worldX = gpos[1] * BLOCK_SIZE
-                    local worldY = gpos[2] * BLOCK_SIZE
-                    local dx = math.abs(pos.X - worldX)
-                    local dy = math.abs(pos.Y - worldY)
-                    if dx < BLOCK_SIZE * 2 and dy < BLOCK_SIZE * 2 then
-                        table.insert(toCollect, {item = item, pos = pos, id = itemId})
-                        break
-                    end
+    -- Scan for items in the Drops folder
+    for _, item in ipairs(dropsFolder:GetDescendants()) do
+        if item:IsA("BasePart") or item:IsA("Model") then
+            local pos = item:GetPivot().Position
+            
+            -- Check if drop is near any target grid position
+            for _, gpos in ipairs(targetGridPositions) do
+                local worldX = gpos[1] * BLOCK_SIZE
+                local worldY = gpos[2] * BLOCK_SIZE
+                local dx = math.abs(pos.X - worldX)
+                local dy = math.abs(pos.Y - worldY)
+                
+                -- Detect items within 2 block radius of target
+                if dx < BLOCK_SIZE * 2 and dy < BLOCK_SIZE * 2 then
+                    table.insert(toCollect, {item = item, pos = pos})
+                    break
                 end
             end
         end
@@ -102,35 +125,22 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     
     if #toCollect == 0 then return end
     
-    AutoPnB._statusText = "Collecting " .. #toCollect .. " items..."
-    hum.PlatformStand = true
+    AutoPnB._statusText = "Walking to " .. #toCollect .. " drops..."
     
     for _, data in ipairs(toCollect) do
         if not AutoPnB._running then break end
-        if not data.item.Parent then continue end
+        if not data.item.Parent then continue end -- Item picked up already
         
-        -- Teleport ke item
-        pcall(function()
-            for i = 1, 4 do
-                root.CFrame = root.CFrame:Lerp(CFrame.new(data.pos) * root.CFrame.Rotation, i / 4)
-                root.Velocity = Vector3.new(0, 0, 0)
-                task.wait(AutoPnB.COLLECT_DELAY)
-            end
-            task.wait(0.05)
-        end)
+        walkTo(data.pos, 1.5)
         AutoPnB._collectCount = AutoPnB._collectCount + 1
+        task.wait(0.1)
     end
     
-    -- Kembali ke posisi awal
-    pcall(function()
-        for i = 1, 4 do
-            root.CFrame = root.CFrame:Lerp(CFrame.new(originPos) * root.CFrame.Rotation, i / 4)
-            root.Velocity = Vector3.new(0, 0, 0)
-            task.wait(AutoPnB.COLLECT_DELAY)
-        end
-    end)
-    
-    hum.PlatformStand = false
+    -- Return to starting position
+    if AutoPnB._running then
+        AutoPnB._statusText = "Returning to origin..."
+        walkTo(originPos, 2)
+    end
 end
 
 -- ═══════════════════════════════════════
