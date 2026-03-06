@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.1" -- Restored World Scanner
+local VERSION = "v1.4.2" -- Auto Collect PnB
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -778,6 +778,35 @@ breakToggle.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Auto Collect toggle
+local collectRow = Instance.new("Frame")
+collectRow.Size = UDim2.new(1, 0, 0, 28)
+collectRow.BackgroundTransparency = 1
+collectRow.LayoutOrder = 5
+collectRow.Parent = tabPnB
+
+local collectToggle = Instance.new("TextButton")
+collectToggle.Size = UDim2.new(1, 0, 0, 24)
+collectToggle.BackgroundColor3 = C.btnGrey
+collectToggle.Text = "🧲 Auto Collect: OFF"
+collectToggle.TextColor3 = C.white
+collectToggle.TextSize = 11
+collectToggle.Font = Enum.Font.GothamBold
+collectToggle.BorderSizePixel = 0
+collectToggle.Parent = collectRow
+Instance.new("UICorner", collectToggle).CornerRadius = UDim.new(0, 6)
+
+collectToggle.MouseButton1Click:Connect(function()
+    AutoPnB.ENABLE_COLLECT = not AutoPnB.ENABLE_COLLECT
+    if AutoPnB.ENABLE_COLLECT then
+        collectToggle.Text = "🧲 Auto Collect: ON"
+        collectToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    else
+        collectToggle.Text = "🧲 Auto Collect: OFF"
+        collectToggle.BackgroundColor3 = C.btnGrey
+    end
+end)
+
 -- ═══════════════════════════════════════
 -- CONTROLS
 -- ═══════════════════════════════════════
@@ -843,7 +872,7 @@ local cycleLabel = Instance.new("TextLabel")
 cycleLabel.Size = UDim2.new(1, 0, 0, 14)
 cycleLabel.Position = UDim2.new(0, 0, 0, 14)
 cycleLabel.BackgroundTransparency = 1
-cycleLabel.Text = "Siklus: 0 | Target: 0"
+cycleLabel.Text = "Siklus: 0 | Target: 0 | Collected: 0"
 cycleLabel.TextColor3 = C.dim
 cycleLabel.TextSize = 11
 cycleLabel.Font = Enum.Font.Gotham
@@ -1652,7 +1681,7 @@ spawn(function()
         if activeTab == 1 then
             itemDisplay.Text = tostring(AutoPnB.ITEM_ID)
             statusLabel.Text = "Status: " .. AutoPnB.getStatus()
-            cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount()
+            cycleLabel.Text = "Siklus: " .. AutoPnB.getCycleCount() .. " | Target: " .. AutoPnB.getTargetCount() .. " | Collected: " .. AutoPnB.getCollectCount()
             
         -- Update Clear World Tab
         elseif activeTab == 5 then

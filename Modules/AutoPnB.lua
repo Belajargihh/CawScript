@@ -6,7 +6,8 @@
     1. Hitung posisi: playerGrid + offset
     2. Place blok (PlayerPlaceItem)
     3. Punch blok (PlayerFist)
-    4. Lanjut ke target berikutnya
+    4. Collect drops (if enabled)
+    5. Lanjut ke target berikutnya
 ]]
 
 local AutoPnB = {}
@@ -29,21 +30,24 @@ end
 -- KONFIGURASI
 -- ═══════════════════════════════════════
 
-AutoPnB.ITEM_ID      = 2       -- Item ID (2 = Dirt Block)
-AutoPnB.DELAY_BREAK  = 0.15    -- Jeda setelah setiap aksi (150ms)
-AutoPnB.ENABLE_PLACE = true     -- Toggle place ON/OFF
-AutoPnB.ENABLE_BREAK = true     -- Toggle break ON/OFF
+AutoPnB.ITEM_ID       = 2       -- Item ID (2 = Dirt Block)
+AutoPnB.DELAY_BREAK   = 0.15    -- Jeda setelah setiap aksi (150ms)
+AutoPnB.ENABLE_PLACE  = true    -- Toggle place ON/OFF
+AutoPnB.ENABLE_BREAK  = true    -- Toggle break ON/OFF
+AutoPnB.ENABLE_COLLECT = false   -- Toggle auto-collect ON/OFF
+AutoPnB.COLLECT_DELAY  = 0.05   -- Delay per teleport step
 
 -- Multi-target: daftar offset {dx, dy} relatif dari posisi karakter
 -- Contoh: {{1,0}, {-1,0}, {0,1}} = kanan, kiri, atas
 AutoPnB._targets = {}
 
 -- State
-AutoPnB._running    = false
-AutoPnB._cycleCount = 0
-AutoPnB._statusText = "Idle"
+AutoPnB._running      = false
+AutoPnB._cycleCount   = 0
+AutoPnB._collectCount = 0
+AutoPnB._statusText   = "Idle"
 AutoPnB._currentTarget = ""
-AutoPnB._thread     = nil
+AutoPnB._thread       = nil
 
 -- ═══════════════════════════════════════
 -- INTERNAL
@@ -56,6 +60,76 @@ end
 local function doPunch(gridX, gridY)
     if not RemoteFist then return end
     RemoteFist:FireServer(Vector2.new(gridX, gridY))
+end
+
+local BLOCK_SIZE = 4.5
+
+-- Collect drops near target grid positions, then return to origin
+local function collectNearbyDrops(originPos, targetGridPositions)
+    if not AutoPnB.ENABLE_COLLECT then return end
+    
+    local player = game:GetService("Players").LocalPlayer
+    local char = player and player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+    
+    local dropsFolder = workspace:FindFirstChild("Drops")
+    if not dropsFolder then return end
+    
+    local toCollect = {}
+    
+    for _, item in ipairs(dropsFolder:GetChildren()) do
+        local itemId = item:GetAttribute("id")
+        if itemId then
+            local ok, pos = pcall(function() return item:GetPivot().Position end)
+            if ok and pos then
+                -- Check if drop is near any target grid position
+                for _, gpos in ipairs(targetGridPositions) do
+                    local worldX = gpos[1] * BLOCK_SIZE
+                    local worldY = gpos[2] * BLOCK_SIZE
+                    local dx = math.abs(pos.X - worldX)
+                    local dy = math.abs(pos.Y - worldY)
+                    if dx < BLOCK_SIZE * 2 and dy < BLOCK_SIZE * 2 then
+                        table.insert(toCollect, {item = item, pos = pos, id = itemId})
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
+    if #toCollect == 0 then return end
+    
+    AutoPnB._statusText = "Collecting " .. #toCollect .. " items..."
+    hum.PlatformStand = true
+    
+    for _, data in ipairs(toCollect) do
+        if not AutoPnB._running then break end
+        if not data.item.Parent then continue end
+        
+        -- Teleport ke item
+        pcall(function()
+            for i = 1, 4 do
+                root.CFrame = root.CFrame:Lerp(CFrame.new(data.pos) * root.CFrame.Rotation, i / 4)
+                root.Velocity = Vector3.new(0, 0, 0)
+                task.wait(AutoPnB.COLLECT_DELAY)
+            end
+            task.wait(0.05)
+        end)
+        AutoPnB._collectCount = AutoPnB._collectCount + 1
+    end
+    
+    -- Kembali ke posisi awal
+    pcall(function()
+        for i = 1, 4 do
+            root.CFrame = root.CFrame:Lerp(CFrame.new(originPos) * root.CFrame.Rotation, i / 4)
+            root.Velocity = Vector3.new(0, 0, 0)
+            task.wait(AutoPnB.COLLECT_DELAY)
+        end
+    end)
+    
+    hum.PlatformStand = false
 end
 
 -- ═══════════════════════════════════════
@@ -122,6 +196,18 @@ local function pnbLoop()
                 end
                 
                 if AutoPnB._running then
+                    -- Collect drops near target positions
+                    if AutoPnB.ENABLE_COLLECT then
+                        local gridPositions = {}
+                        for _, offset in ipairs(AutoPnB._targets) do
+                            table.insert(gridPositions, {playerX + offset[1], playerY + offset[2]})
+                        end
+                        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            collectNearbyDrops(root.Position, gridPositions)
+                        end
+                    end
+                    
                     AutoPnB._cycleCount = AutoPnB._cycleCount + 1
                     AutoPnB._statusText = "Siklus #" .. AutoPnB._cycleCount
                     task.wait(AutoPnB.DELAY_BREAK)
@@ -189,6 +275,14 @@ end
 function AutoPnB.stop()
     AutoPnB._running = false
     AutoPnB._statusText = "Stopping..."
+    -- Reset PlatformStand in case it was left on
+    pcall(function()
+        local char = game:GetService("Players").LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.PlatformStand = false end
+        end
+    end)
 end
 
 function AutoPnB.isRunning()
@@ -205,6 +299,10 @@ end
 
 function AutoPnB.getTargetCount()
     return #AutoPnB._targets
+end
+
+function AutoPnB.getCollectCount()
+    return AutoPnB._collectCount
 end
 
 return AutoPnB
