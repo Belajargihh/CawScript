@@ -17,6 +17,12 @@ local AutoPnB = {}
 -- ═══════════════════════════════════════
 local Antiban
 local Coordinates
+local _log = nil
+
+local function log(msg)
+    if _log then _log(msg) end
+    print("[AutoPnB] " .. tostring(msg))
+end
 
 local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
 local RemotePlace = Remotes and Remotes:WaitForChild("PlayerPlaceItem", 2)
@@ -99,13 +105,12 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     
     local dropsFolder = workspace:FindFirstChild("Drops") or workspace:FindFirstChild("Items")
     if not dropsFolder then 
-        print("[AutoPnB] No Drops/Items folder found in workspace")
+        log("No Drops/Items folder found.")
         return 
     end
     
     local toCollect = {}
     local allItems = dropsFolder:GetDescendants()
-    -- print("[AutoPnB] Scanning " .. #allItems .. " items in " .. dropsFolder.Name)
     
     -- Scan for items
     for _, item in ipairs(allItems) do
@@ -141,18 +146,16 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     end
     
     if #toCollect == 0 then 
-        -- print("[AutoPnB] No matching drops found near targets")
         return 
     end
     
-    print("[AutoPnB] Found " .. #toCollect .. " items to collect. Walking...")
+    log("Found " .. #toCollect .. " items. Collecting...")
     AutoPnB._statusText = "Walking to " .. #toCollect .. " drops..."
     
     for _, data in ipairs(toCollect) do
         if not AutoPnB._running then break end
         if not data.item.Parent then continue end
         
-        -- print("[AutoPnB] Walking to item at: " .. tostring(data.pos))
         walkTo(data.pos, 1.5)
         AutoPnB._collectCount = AutoPnB._collectCount + 1
         task.wait(0.05)
@@ -160,7 +163,7 @@ local function collectNearbyDrops(originPos, targetGridPositions)
     
     -- Return to starting position
     if AutoPnB._running then
-        -- print("[AutoPnB] Returning to origin: " .. tostring(originPos))
+        log("Returning to origin.")
         AutoPnB._statusText = "Returning to origin..."
         walkTo(originPos, 2)
     end
@@ -176,81 +179,73 @@ local function pnbLoop()
         if #AutoPnB._targets == 0 then
             AutoPnB._statusText = "Tidak ada target aktif!"
             task.wait(1)
+            continue
+        end
+        
+        -- Ambil posisi player saat ini sebagai center
+        local playerX, playerY = Coordinates.getGridPosition()
+        if not playerX then 
+            task.wait(1) 
+            continue 
+        end
+        
+        local hrp = game:GetService("Players").LocalPlayer.Character and game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then task.wait(1) continue end
+        local originPos = hrp.Position
+        
+        AutoPnB._cycleCount = AutoPnB._cycleCount + 1
+        
+        -- Loop setiap target offset
+        for _, offset in ipairs(AutoPnB._targets) do
             if not AutoPnB._running then break end
-            -- Keep checking
-        else
-            -- Ambil posisi karakter saat ini
-            local playerX, playerY = Coordinates.getGridPosition()
             
-            if not playerX then
-                AutoPnB._statusText = "Karakter tidak ditemukan"
-                task.wait(0.5)
-            else
-                -- Cek minimal 1 mode aktif
-                if not AutoPnB.ENABLE_PLACE and not AutoPnB.ENABLE_BREAK then
-                    AutoPnB._statusText = "Place & Break OFF!"
-                    task.wait(1)
+            local targetX = playerX + offset[1]
+            local targetY = playerY + offset[2]
+            AutoPnB._currentTarget = string.format("X=%d, Y=%d", targetX, targetY)
+            
+            -- Place (jika aktif)
+            if AutoPnB.ENABLE_PLACE then
+                AutoPnB._statusText = "Place di " .. AutoPnB._currentTarget
+                if Antiban then
+                    Antiban.throttle(function()
+                        doPlace(targetX, targetY, AutoPnB.ITEM_ID)
+                    end)
                 else
-                    -- Loop semua target
-                    for _, offset in ipairs(AutoPnB._targets) do
-                        if not AutoPnB._running then break end
-                        
-                        local targetX = playerX + offset[1]
-                        local targetY = playerY + offset[2]
-                        
-                        AutoPnB._currentTarget = "X=" .. targetX .. " Y=" .. targetY
-                        
-                        -- Place (jika aktif)
-                        if AutoPnB.ENABLE_PLACE then
-                            AutoPnB._statusText = "Place di " .. AutoPnB._currentTarget
-                            if Antiban then
-                                Antiban.throttle(function()
-                                    doPlace(targetX, targetY, AutoPnB.ITEM_ID)
-                                end)
-                            else
-                                doPlace(targetX, targetY, AutoPnB.ITEM_ID)
-                            end
-                            task.wait(AutoPnB.DELAY_BREAK)
-                            if not AutoPnB._running then break end
-                        end
-                        
-                        -- Punch / Break (jika aktif)
-                        if AutoPnB.ENABLE_BREAK then
-                            AutoPnB._statusText = "Punch di " .. AutoPnB._currentTarget
-                            if Antiban then
-                                Antiban.throttle(function()
-                                    doPunch(targetX, targetY)
-                                end)
-                            else
-                                doPunch(targetX, targetY)
-                            end
-                            task.wait(AutoPnB.DELAY_BREAK)
-                        end
-                    end
+                    doPlace(targetX, targetY, AutoPnB.ITEM_ID)
                 end
-                
-                if AutoPnB._running then
-                    -- Collect drops near target positions
-                    if AutoPnB.ENABLE_COLLECT then
-                        local gridPositions = {}
-                        for _, offset in ipairs(AutoPnB._targets) do
-                            table.insert(gridPositions, {playerX + offset[1], playerY + offset[2]})
-                        end
-                        local lp = game:GetService("Players").LocalPlayer
-                        local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            collectNearbyDrops(root.Position, gridPositions)
-                        end
-                    end
-                    
-                    AutoPnB._cycleCount = AutoPnB._cycleCount + 1
-                    AutoPnB._statusText = "Siklus #" .. AutoPnB._cycleCount
-                    task.wait(AutoPnB.DELAY_BREAK)
+                task.wait(AutoPnB.DELAY_BREAK)
+                if not AutoPnB._running then break end
+            end
+            
+            -- Punch / Break (jika aktif)
+            if AutoPnB.ENABLE_BREAK then
+                AutoPnB._statusText = "Punch di " .. AutoPnB._currentTarget
+                if Antiban then
+                    Antiban.throttle(function()
+                        doPunch(targetX, targetY)
+                    end)
+                else
+                    doPunch(targetX, targetY)
                 end
+                task.wait(AutoPnB.DELAY_BREAK)
             end
         end
+        
+        if AutoPnB._running then
+            -- Collect drops near target positions
+            if AutoPnB.ENABLE_COLLECT then
+                local gridPositions = {}
+                for _, offset in ipairs(AutoPnB._targets) do
+                    table.insert(gridPositions, {playerX + offset[1], playerY + offset[2]})
+                end
+                collectNearbyDrops(originPos, gridPositions)
+            end
+        end
+        
+        task.wait(0.1)
     end
     
+    AutoPnB._thread = nil
     AutoPnB._statusText = "Stopped"
 end
 
@@ -258,9 +253,11 @@ end
 -- PUBLIC API
 -- ═══════════════════════════════════════
 
-function AutoPnB.init(coords, antiban)
+function AutoPnB.init(coords, antiban, logFunc)
     Coordinates = coords
     Antiban = antiban
+    _log = logFunc
+    log("AutoPnB Module initialized.")
 end
 
 --- Set targets dari grid (array of {dx, dy})

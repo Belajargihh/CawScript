@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.5" -- Debug Auto Collect PnB
+local VERSION = "v1.4.6" -- HUD Logs & Auto Collect Fix
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -42,12 +42,9 @@ local ManagerModule = safeLoad("ManagerModule", "Modules/ManagerModule.lua")
 local PlayerModule = safeLoad("PlayerModule", "Modules/PlayerModule.lua")
 local ItemScanner  = safeLoad("ItemScanner", "Modules/ItemScanner.lua")
 
-if AutoPnB and Coordinates and Antiban then pcall(function() AutoPnB.init(Coordinates, Antiban) end) end
-if ClearWorld and Antiban then pcall(function() ClearWorld.init(Antiban) end) end
-if ManagerModule and Coordinates and Antiban and BackpackSync then 
-    pcall(function() ManagerModule.init(Coordinates, Antiban, BackpackSync) end)
-end
-if PlayerModule then pcall(function() PlayerModule.init() end) end
+
+-- Global function for logging (defined later after UI is built)
+local logPnB = nil
 
 
 local Players = game:GetService("Players")
@@ -879,6 +876,43 @@ cycleLabel.Font = Enum.Font.Gotham
 cycleLabel.TextXAlignment = Enum.TextXAlignment.Left
 cycleLabel.Parent = statusSection
 
+-- Log area for PnB
+local pnbLogFrame = Instance.new("ScrollingFrame")
+pnbLogFrame.Size = UDim2.new(1, 0, 0, 80)
+pnbLogFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+pnbLogFrame.BorderSizePixel = 1
+pnbLogFrame.BorderColor3 = Color3.fromRGB(40, 40, 60)
+pnbLogFrame.ScrollBarThickness = 2
+pnbLogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+pnbLogFrame.LayoutOrder = 10
+pnbLogFrame.Parent = tabPnB
+
+local pnbLogList = Instance.new("UIListLayout", pnbLogFrame)
+pnbLogList.Padding = UDim.new(0, 2)
+
+local function uiLogPnB(msg)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 14)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "[" .. os.date("%X") .. "] " .. tostring(msg)
+    lbl.TextColor3 = Color3.fromRGB(180, 180, 220)
+    lbl.TextSize = 10
+    lbl.Font = Enum.Font.Code
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = pnbLogFrame
+    
+    -- Auto scroll to bottom
+    pnbLogFrame.CanvasPosition = Vector2.new(0, 9999)
+    
+    -- Limit log entries
+    local logs = pnbLogFrame:GetChildren()
+    if #logs > 30 then
+        logs[2]:Destroy() -- logs[1] is UIListLayout
+    end
+end
+logPnB = uiLogPnB
+logPnB("PnB System Ready.")
+
 -- Delay slider
 local delaySection = Instance.new("Frame")
 delaySection.Size = UDim2.new(1, 0, 0, 35)
@@ -1702,4 +1736,11 @@ spawn(function()
         task.wait(0.5)
     end
 end)
+
+-- Final Initializing
+if Antiban then pcall(function() Antiban.init() end) end
+if AutoPnB then pcall(function() AutoPnB.init(Coordinates, Antiban, logPnB) end) end
+if ManagerModule then pcall(function() ManagerModule.init(Coordinates, Antiban, BackpackSync) end) end
+if ClearWorld then pcall(function() ClearWorld.init(Antiban) end) end
+if PlayerModule then pcall(function() PlayerModule.init() end) end
 
