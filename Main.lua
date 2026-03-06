@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.3.2" -- Wave 2 Dupe Tests
+local VERSION = "v1.3.3" -- Fix interaction bug
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -2038,22 +2038,7 @@ dupeDropPickup.MouseButton1Click:Connect(function()
     logDupe("DONE!")
 end)
 
--- Sniffer Logic Hook
-local oldNC
-oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-    local m = getnamecallmethod()
-    local a = {...}
-    if (m == "FireServer" or m == "InvokeServer") and tabDupe.Visible then
-        local n = tostring(self.Name)
-        logDupe("EVT: " .. n)
-        for i, v in ipairs(a) do
-            local s = tostring(v)
-            if #s > 40 then s = s:sub(1,37).."..." end
-            logDupe("  A["..i.."]: "..s)
-        end
-    end
-    return oldNC(self, ...)
-end))
+-- Sniffer Hook REMOVED (was causing double hookmetamethod conflict — broke game interactions)
 
 
 -- ═══════════════════════════════════════
