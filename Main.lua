@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.3.3" -- Fix interaction bug
+local VERSION = "v1.3.4" -- Wave 3 World Manipulation
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -2038,7 +2038,142 @@ dupeDropPickup.MouseButton1Click:Connect(function()
     logDupe("DONE!")
 end)
 
--- Sniffer Hook REMOVED (was causing double hookmetamethod conflict — broke game interactions)
+-- ═══════════════════════════════════════
+-- WAVE 3: WORLD MANIPULATION TESTS
+-- ═══════════════════════════════════════
+
+local wave3Title = Instance.new("TextLabel")
+wave3Title.Size = UDim2.new(1, 0, 0, 18)
+wave3Title.BackgroundTransparency = 1
+wave3Title.Text = "🌍 Wave 3: World Manipulation"
+wave3Title.TextColor3 = C.white
+wave3Title.TextSize = 12
+wave3Title.Font = Enum.Font.GothamBold
+wave3Title.LayoutOrder = 12
+wave3Title.Parent = tabDupe
+
+-- METHOD: WorldSetTile (Spawn block tanpa inventory)
+local dupeWorldTile = Instance.new("TextButton")
+dupeWorldTile.Size = UDim2.new(1, 0, 0, 32)
+dupeWorldTile.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+dupeWorldTile.Text = "🌍 WORLD SET TILE (Spawn Dirt)"
+dupeWorldTile.TextColor3 = C.white
+dupeWorldTile.Font = Enum.Font.GothamBold
+dupeWorldTile.TextSize = 11
+dupeWorldTile.LayoutOrder = 13
+dupeWorldTile.Parent = tabDupe
+Instance.new("UICorner", dupeWorldTile).CornerRadius = UDim.new(0, 6)
+
+dupeWorldTile.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RSetTile
+    pcall(function() RSetTile = RS:FindFirstChild("Remotes"):FindFirstChild("WorldSetTile") end)
+    if not RSetTile then logDupe("ERR: WorldSetTile not found") return end
+    
+    local gx, gy
+    pcall(function() gx, gy = Coordinates.getGridPosition() end)
+    if not gx then logDupe("ERR: No position") return end
+    
+    local tx, ty = gx + 1, gy
+    
+    logDupe("=== WORLD SET TILE ===")
+    logDupe("Target: " .. tx .. "," .. ty)
+    
+    -- Try various argument formats
+    logDupe("Try 1: (x, y, tileId)...")
+    pcall(function() RSetTile:FireServer(tx, ty, "dirt") end)
+    task.wait(0.3)
+    
+    logDupe("Try 2: (Vector2, tileId)...")
+    pcall(function() RSetTile:FireServer(Vector2.new(tx, ty), "dirt") end)
+    task.wait(0.3)
+    
+    logDupe("Try 3: (x, y, tileId, layer)...")
+    pcall(function() RSetTile:FireServer(tx, ty, "dirt", 1) end)
+    task.wait(0.3)
+    
+    logDupe("Try 4: ({x, y, id})...")
+    pcall(function() RSetTile:FireServer({x = tx, y = ty, id = "dirt"}) end)
+    
+    logDupe("Cek apakah blok muncul di kanan kamu!")
+end)
+
+-- METHOD: WorldSetTile + Fist Combo (Spawn lalu break = free item)
+local dupeSpawnBreak = Instance.new("TextButton")
+dupeSpawnBreak.Size = UDim2.new(1, 0, 0, 32)
+dupeSpawnBreak.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
+dupeSpawnBreak.Text = "⛏️ SPAWN + BREAK (Free Item?)"
+dupeSpawnBreak.TextColor3 = C.white
+dupeSpawnBreak.Font = Enum.Font.GothamBold
+dupeSpawnBreak.TextSize = 11
+dupeSpawnBreak.LayoutOrder = 14
+dupeSpawnBreak.Parent = tabDupe
+Instance.new("UICorner", dupeSpawnBreak).CornerRadius = UDim.new(0, 6)
+
+dupeSpawnBreak.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RSetTile, RFist
+    pcall(function() RSetTile = RS:FindFirstChild("Remotes"):FindFirstChild("WorldSetTile") end)
+    pcall(function() RFist = RS:FindFirstChild("Remotes"):FindFirstChild("PlayerFist") end)
+    if not RSetTile or not RFist then logDupe("ERR: Remotes missing") return end
+    
+    local gx, gy
+    pcall(function() gx, gy = Coordinates.getGridPosition() end)
+    if not gx then logDupe("ERR: No position") return end
+    
+    local tx, ty = gx + 1, gy
+    
+    logDupe("=== SPAWN + BREAK COMBO ===")
+    logDupe("Step 1: Spawning dirt at " .. tx .. "," .. ty)
+    pcall(function() RSetTile:FireServer(tx, ty, "dirt") end)
+    pcall(function() RSetTile:FireServer(Vector2.new(tx, ty), "dirt") end)
+    
+    task.wait(0.5)
+    
+    logDupe("Step 2: Breaking spawned block...")
+    pcall(function() RFist:FireServer(Vector2.new(tx, ty)) end)
+    task.wait(0.2)
+    pcall(function() RFist:FireServer(Vector2.new(tx, ty)) end)
+    task.wait(0.2)
+    pcall(function() RFist:FireServer(Vector2.new(tx, ty)) end)
+    
+    logDupe("Cek backpack — dapet item gak?")
+end)
+
+-- METHOD: CustomFunctionRemote (Probe)
+local dupeCustom = Instance.new("TextButton")
+dupeCustom.Size = UDim2.new(1, 0, 0, 32)
+dupeCustom.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+dupeCustom.Text = "🔧 PROBE CustomFunctionRemote"
+dupeCustom.TextColor3 = C.white
+dupeCustom.Font = Enum.Font.GothamBold
+dupeCustom.TextSize = 11
+dupeCustom.LayoutOrder = 15
+dupeCustom.Parent = tabDupe
+Instance.new("UICorner", dupeCustom).CornerRadius = UDim.new(0, 6)
+
+dupeCustom.MouseButton1Click:Connect(function()
+    local RS = game:GetService("ReplicatedStorage")
+    local RCustom
+    pcall(function() RCustom = RS:FindFirstChild("Remotes"):FindFirstChild("CustomFunctionRemote") end)
+    if not RCustom then logDupe("ERR: CustomFunctionRemote not found") return end
+    
+    logDupe("=== CUSTOM FUNCTION PROBE ===")
+    logDupe("Type: " .. RCustom.ClassName)
+    
+    logDupe("Try: give_item...")
+    pcall(function() RCustom:FireServer("give_item", {item = "dirt", amount = 100}) end)
+    task.wait(0.2)
+    
+    logDupe("Try: add_item...")
+    pcall(function() RCustom:FireServer("add_item", "dirt", 100) end)
+    task.wait(0.2)
+    
+    logDupe("Try: spawn_item...")
+    pcall(function() RCustom:FireServer("spawn_item", "dirt", 100) end)
+    
+    logDupe("Cek backpack berubah gak!")
+end)
 
 
 -- ═══════════════════════════════════════
