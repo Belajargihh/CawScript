@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.2.5" -- Debugging UI Load
+local VERSION = "v1.3.0" -- Dupe Research Tools
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
@@ -301,6 +301,7 @@ local tabs = {
     {icon = "🤖", name = "Bot"},
     {icon = "🌍", name = "Clear World"},
     {icon = "👤", name = "Player"},
+    {icon = "📡", name = "Dupe Research"},
 }
 
 local tabButtons = {}
@@ -1611,6 +1612,224 @@ end)
 createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
+
+-- ═══════════════════════════════════════
+-- TAB 7: DUPE RESEARCH (SNIFFER)
+-- ═══════════════════════════════════════
+
+local tabDupe = Instance.new("ScrollingFrame")
+tabDupe.Size = UDim2.new(1, -10, 1, -10)
+tabDupe.Position = UDim2.new(0, 5, 0, 5)
+tabDupe.BackgroundTransparency = 1
+tabDupe.BorderSizePixel = 0
+tabDupe.ScrollBarThickness = 2
+tabDupe.Visible = false
+tabDupe.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabDupe.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabDupe.Parent = contentContainer
+tabFrames[7] = tabDupe
+
+local dupeList = Instance.new("UIListLayout", tabDupe)
+dupeList.Padding = UDim.new(0, 8)
+dupeList.SortOrder = Enum.SortOrder.LayoutOrder
+dupeList.Parent = tabDupe
+
+local dupeTitle = Instance.new("TextLabel", tabDupe)
+dupeTitle.Size = UDim2.new(1, 0, 0, 20)
+dupeTitle.BackgroundTransparency = 1
+dupeTitle.Text = "🔬 Network Sniffer (Dupe Research)"
+dupeTitle.TextColor3 = C.white
+dupeTitle.TextSize = 13
+dupeTitle.Font = Enum.Font.GothamBold
+dupeTitle.LayoutOrder = 1
+dupeTitle.Parent = tabDupe
+
+local dupeScroll = Instance.new("ScrollingFrame", tabDupe)
+dupeScroll.Size = UDim2.new(1, 0, 0, 250)
+dupeScroll.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+dupeScroll.BorderSizePixel = 0
+dupeScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+dupeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+dupeScroll.ScrollBarThickness = 2
+dupeScroll.LayoutOrder = 2
+dupeScroll.Parent = tabDupe
+Instance.new("UICorner", dupeScroll)
+
+local dupeLog = Instance.new("TextLabel", dupeScroll)
+dupeLog.Size = UDim2.new(1, -10, 0, 0)
+dupeLog.AutomaticSize = Enum.AutomaticSize.Y
+dupeLog.Position = UDim2.new(0, 5, 0, 5)
+dupeLog.BackgroundTransparency = 1
+dupeLog.Text = "--- Logger Ready ---"
+dupeLog.TextColor3 = Color3.fromRGB(0, 255, 120)
+dupeLog.TextSize = 10
+dupeLog.Font = Enum.Font.Code
+dupeLog.TextXAlignment = Enum.TextXAlignment.Left
+dupeLog.TextYAlignment = Enum.TextYAlignment.Top
+dupeLog.TextWrapped = true
+dupeLog.Parent = dupeScroll
+
+local function logDupe(msg)
+    local ts = os.date("%M:%S")
+    dupeLog.Text = dupeLog.Text .. "\n[" .. ts .. "] " .. tostring(msg)
+    dupeScroll.CanvasPosition = Vector2.new(0, dupeScroll.AbsoluteCanvasSize.Y)
+end
+
+local dupeCopy = Instance.new("TextButton", tabDupe)
+dupeCopy.Size = UDim2.new(1, 0, 0, 32)
+dupeCopy.BackgroundColor3 = C.accent
+dupeCopy.Text = "📋 COPY LOGS"
+dupeCopy.TextColor3 = C.white
+dupeCopy.Font = Enum.Font.GothamBold
+dupeCopy.LayoutOrder = 3
+dupeCopy.Parent = tabDupe
+Instance.new("UICorner", dupeCopy)
+
+dupeCopy.MouseButton1Click:Connect(function()
+    setclipboard(dupeLog.Text)
+    dupeCopy.Text = "✅ COPIED!"
+    task.wait(1)
+    dupeCopy.Text = "📋 COPY LOGS"
+end)
+
+-- ═══════════════════════════════════════
+-- DUPE TEST TOOLS
+-- ═══════════════════════════════════════
+
+local dupeTestTitle = Instance.new("TextLabel")
+dupeTestTitle.Size = UDim2.new(1, 0, 0, 18)
+dupeTestTitle.BackgroundTransparency = 1
+dupeTestTitle.Text = "⚔️ Dupe Test Tools (Slot 1)"
+dupeTestTitle.TextColor3 = C.white
+dupeTestTitle.TextSize = 12
+dupeTestTitle.Font = Enum.Font.GothamBold
+dupeTestTitle.LayoutOrder = 4
+dupeTestTitle.Parent = tabDupe
+
+-- Test 1: SPOOF
+local dupeSpoof = Instance.new("TextButton")
+dupeSpoof.Size = UDim2.new(1, 0, 0, 32)
+dupeSpoof.BackgroundColor3 = Color3.fromRGB(200, 100, 0)
+dupeSpoof.Text = "🔥 TEST: SPOOF (Drop 1 → Konfirmasi 999)"
+dupeSpoof.TextColor3 = C.white
+dupeSpoof.Font = Enum.Font.GothamBold
+dupeSpoof.TextSize = 11
+dupeSpoof.LayoutOrder = 5
+dupeSpoof.Parent = tabDupe
+Instance.new("UICorner", dupeSpoof).CornerRadius = UDim.new(0, 6)
+
+dupeSpoof.MouseButton1Click:Connect(function()
+    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
+    local RemPrompt
+    pcall(function()
+        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
+    end)
+    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    
+    logDupe("=== SPOOF TEST ===")
+    logDupe("Firing PlayerDrop(1)...")
+    pcall(function() RemoteDrop:FireServer(1) end)
+    task.wait(0.15)
+    logDupe("Firing UIPromptEvent(amt=999)...")
+    pcall(function()
+        RemPrompt:FireServer({
+            ButtonAction = "drp",
+            Inputs = { amt = "999" }
+        })
+    end)
+    logDupe("DONE! Cek berapa item di tanah.")
+end)
+
+-- Test 2: LAG SPAM
+local dupeLag = Instance.new("TextButton")
+dupeLag.Size = UDim2.new(1, 0, 0, 32)
+dupeLag.BackgroundColor3 = Color3.fromRGB(100, 50, 180)
+dupeLag.Text = "⚡ TEST: LAG SPAM (5x Drop Slot 1)"
+dupeLag.TextColor3 = C.white
+dupeLag.Font = Enum.Font.GothamBold
+dupeLag.TextSize = 11
+dupeLag.LayoutOrder = 6
+dupeLag.Parent = tabDupe
+Instance.new("UICorner", dupeLag).CornerRadius = UDim.new(0, 6)
+
+dupeLag.MouseButton1Click:Connect(function()
+    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
+    local RemPrompt
+    pcall(function()
+        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
+    end)
+    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    
+    logDupe("=== LAG SPAM TEST ===")
+    logDupe("Firing 5x PlayerDrop...")
+    for i = 1, 5 do
+        pcall(function() RemoteDrop:FireServer(1) end)
+        task.wait(0.02)
+    end
+    task.wait(0.05)
+    logDupe("Firing 5x UIPromptEvent...")
+    for i = 1, 5 do
+        pcall(function()
+            RemPrompt:FireServer({
+                ButtonAction = "drp",
+                Inputs = { amt = "1" }
+            })
+        end)
+    end
+    logDupe("DONE! Cek ground items.")
+end)
+
+-- Test 3: DELAYED CONFIRM
+local dupeDelay = Instance.new("TextButton")
+dupeDelay.Size = UDim2.new(1, 0, 0, 32)
+dupeDelay.BackgroundColor3 = Color3.fromRGB(0, 130, 130)
+dupeDelay.Text = "🕐 TEST: DROP + DELAY 2s + CONFIRM"
+dupeDelay.TextColor3 = C.white
+dupeDelay.Font = Enum.Font.GothamBold
+dupeDelay.TextSize = 11
+dupeDelay.LayoutOrder = 7
+dupeDelay.Parent = tabDupe
+Instance.new("UICorner", dupeDelay).CornerRadius = UDim.new(0, 6)
+
+dupeDelay.MouseButton1Click:Connect(function()
+    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
+    local RemPrompt
+    pcall(function()
+        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
+    end)
+    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    
+    logDupe("=== DELAYED CONFIRM TEST ===")
+    logDupe("Firing PlayerDrop(1)...")
+    pcall(function() RemoteDrop:FireServer(1) end)
+    logDupe("Waiting 2 seconds...")
+    task.wait(2)
+    logDupe("Firing UIPromptEvent(amt=1)...")
+    pcall(function()
+        RemPrompt:FireServer({
+            ButtonAction = "drp",
+            Inputs = { amt = "1" }
+        })
+    end)
+    logDupe("DONE! Server masih terima kah?")
+end)
+
+-- Sniffer Logic Hook
+local oldNC
+oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    local m = getnamecallmethod()
+    local a = {...}
+    if (m == "FireServer" or m == "InvokeServer") and tabDupe.Visible then
+        local n = tostring(self.Name)
+        logDupe("EVT: " .. n)
+        for i, v in ipairs(a) do
+            local s = tostring(v)
+            if #s > 40 then s = s:sub(1,37).."..." end
+            logDupe("  A["..i.."]: "..s)
+        end
+    end
+    return oldNC(self, ...)
+end))
 
 
 -- ═══════════════════════════════════════
