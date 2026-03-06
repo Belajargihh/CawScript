@@ -76,9 +76,13 @@ local function walkTo(position, timeout)
     local player = game:GetService("Players").LocalPlayer
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
     
-    hum:MoveTo(position)
+    -- Ensure destination is at the same height as the character to avoid walking into the ground/sky
+    local walkPos = Vector3.new(position.X, hrp.Position.Y, position.Z)
+    
+    hum:MoveTo(walkPos)
     
     local finished = false
     local connection = hum.MoveToFinished:Connect(function()
@@ -86,9 +90,25 @@ local function walkTo(position, timeout)
     end)
     
     local start = tick()
+    local lastPos = hrp.Position
+    local stuckTick = 0
+    
     while not finished and tick() - start < (timeout or 2) do
         task.wait(0.1)
         if not AutoPnB._running then break end
+        
+        -- Check if moving
+        if (hrp.Position - lastPos).Magnitude < 0.1 then
+            stuckTick = stuckTick + 1
+            if stuckTick > 5 then
+                -- Try to jump if stuck
+                hum.Jump = true
+                stuckTick = 0
+            end
+        else
+            stuckTick = 0
+        end
+        lastPos = hrp.Position
     end
     
     if connection then connection:Disconnect() end
@@ -129,13 +149,13 @@ local function collectNearbyDrops(originPos, targetGridPositions)
                 if ok and pos then
                     -- Check if drop is near any target grid position
                     for _, gpos in ipairs(targetGridPositions) do
-                        local worldX = gpos[1] * BLOCK_SIZE
-                        local worldY = gpos[2] * BLOCK_SIZE
-                        local dx = math.abs(pos.X - worldX)
-                        local dy = math.abs(pos.Y - worldY)
+                        local projX = gpos[1] * BLOCK_SIZE
+                        local projZ = gpos[2] * BLOCK_SIZE
+                        local dx = math.abs(pos.X - projX)
+                        local dz = math.abs(pos.Z - projZ)
                         
-                        -- Detect items within 4 block radius of target (increased)
-                        if dx < BLOCK_SIZE * 4 and dy < BLOCK_SIZE * 4 then
+                        -- Detect items within 4 block radius of target grid (XZ PLANE)
+                        if dx < BLOCK_SIZE * 4 and dz < BLOCK_SIZE * 4 then
                             table.insert(toCollect, {item = item, pos = pos})
                             break
                         end

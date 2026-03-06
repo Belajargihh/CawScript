@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.4.6" -- HUD Logs & Auto Collect Fix
+local VERSION = "v1.4.7" -- XZ Plane & Walk Logic Fix
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here
