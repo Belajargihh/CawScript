@@ -1719,20 +1719,19 @@ dupeSpoof.Parent = tabDupe
 Instance.new("UICorner", dupeSpoof).CornerRadius = UDim.new(0, 6)
 
 dupeSpoof.MouseButton1Click:Connect(function()
-    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
-    local RemPrompt
-    pcall(function()
-        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
-    end)
-    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    local RDrop, RPrompt
+    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
+    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    if not RDrop then logDupe("ERR: PlayerDrop not found") return end
+    if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
     logDupe("=== SPOOF TEST ===")
     logDupe("Firing PlayerDrop(1)...")
-    pcall(function() RemoteDrop:FireServer(1) end)
+    pcall(function() RDrop:FireServer(1) end)
     task.wait(0.15)
     logDupe("Firing UIPromptEvent(amt=999)...")
     pcall(function()
-        RemPrompt:FireServer({
+        RPrompt:FireServer({
             ButtonAction = "drp",
             Inputs = { amt = "999" }
         })
@@ -1753,24 +1752,23 @@ dupeLag.Parent = tabDupe
 Instance.new("UICorner", dupeLag).CornerRadius = UDim.new(0, 6)
 
 dupeLag.MouseButton1Click:Connect(function()
-    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
-    local RemPrompt
-    pcall(function()
-        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
-    end)
-    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    local RDrop, RPrompt
+    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
+    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    if not RDrop then logDupe("ERR: PlayerDrop not found") return end
+    if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
     logDupe("=== LAG SPAM TEST ===")
     logDupe("Firing 5x PlayerDrop...")
     for i = 1, 5 do
-        pcall(function() RemoteDrop:FireServer(1) end)
+        pcall(function() RDrop:FireServer(1) end)
         task.wait(0.02)
     end
     task.wait(0.05)
     logDupe("Firing 5x UIPromptEvent...")
     for i = 1, 5 do
         pcall(function()
-            RemPrompt:FireServer({
+            RPrompt:FireServer({
                 ButtonAction = "drp",
                 Inputs = { amt = "1" }
             })
@@ -1792,21 +1790,20 @@ dupeDelay.Parent = tabDupe
 Instance.new("UICorner", dupeDelay).CornerRadius = UDim.new(0, 6)
 
 dupeDelay.MouseButton1Click:Connect(function()
-    if not RemoteDrop then logDupe("ERR: PlayerDrop not found") return end
-    local RemPrompt
-    pcall(function()
-        RemPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent
-    end)
-    if not RemPrompt then logDupe("ERR: UIPromptEvent not found") return end
+    local RDrop, RPrompt
+    pcall(function() RDrop = Remotes and Remotes:FindFirstChild("PlayerDrop") end)
+    pcall(function() RPrompt = game:GetService("ReplicatedStorage").Managers.UIManager.UIPromptEvent end)
+    if not RDrop then logDupe("ERR: PlayerDrop not found") return end
+    if not RPrompt then logDupe("ERR: UIPromptEvent not found") return end
     
     logDupe("=== DELAYED CONFIRM TEST ===")
     logDupe("Firing PlayerDrop(1)...")
-    pcall(function() RemoteDrop:FireServer(1) end)
+    pcall(function() RDrop:FireServer(1) end)
     logDupe("Waiting 2 seconds...")
     task.wait(2)
     logDupe("Firing UIPromptEvent(amt=1)...")
     pcall(function()
-        RemPrompt:FireServer({
+        RPrompt:FireServer({
             ButtonAction = "drp",
             Inputs = { amt = "1" }
         })
