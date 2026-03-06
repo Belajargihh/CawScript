@@ -1611,7 +1611,6 @@ end)
 createPlayerToggle(tabPlayer, "🦘", "Infinite Jump", 5, function(state)
     PlayerModule.setInfiniteJump(state)
 end)
-
 -- ═══════════════════════════════════════
 -- REAL-TIME UPDATE LOOP
 -- ═══════════════════════════════════════
