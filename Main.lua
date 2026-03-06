@@ -15,7 +15,7 @@
 
 local GITHUB_BASE = "https://raw.githubusercontent.com/Belajargihh/CawScript/main/"
 local NOCACHE = "?t=" .. tostring(math.floor(tick()))
-local VERSION = "v1.5.0" -- Movement Packet Sync (Anti-Damage)
+local VERSION = "v1.5.1" -- XZ Plane & Packet Mapping Fix
 print("[CawScript] Current Version: " .. VERSION)
 
 -- Dependencies Loading logic starts here

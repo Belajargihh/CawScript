@@ -92,8 +92,8 @@ local function walkTo(position, timeout)
     hum.PlatformStand = false
     hum.Sit = false
     
-    -- In side-scroller, we walk mostly horizontally (X) and vertically (Y)
-    local walkPos = Vector3.new(position.X, position.Y, hrp.Position.Z)
+    -- In top-down systems (Roblox standard), we walk on X and Z. Y is height.
+    local walkPos = Vector3.new(position.X, hrp.Position.Y, position.Z)
     local remote = getMoveRemote()
     
     hum:MoveTo(walkPos)
@@ -113,8 +113,9 @@ local function walkTo(position, timeout)
         if not AutoPnB._running then break end
         
         -- Fire movement packet to sync with server (Anti-Damage)
-        if remote and tick() - lastPacket > 0.1 then
-            remote:FireServer(Vector2.new(hrp.Position.X, hrp.Position.Y))
+        -- Vector2(X, Y) maps to World (X, Z) in top-down games
+        if remote and tick() - lastPacket > 0.08 then
+            remote:FireServer(Vector2.new(hrp.Position.X, hrp.Position.Z))
             lastPacket = tick()
         end
         
@@ -178,12 +179,12 @@ local function collectNearbyDrops(originPos, targetGridPositions)
                     -- Check if drop is near any target grid position
                     for _, gpos in ipairs(targetGridPositions) do
                         local projX = gpos[1] * BLOCK_SIZE
-                        local projY = gpos[2] * BLOCK_SIZE
+                        local projZ = gpos[2] * BLOCK_SIZE
                         local dx = math.abs(pos.X - projX)
-                        local dy = math.abs(pos.Y - projY)
+                        local dz = math.abs(pos.Z - projZ)
                         
-                        -- Detect items within 4 block radius of target grid (XY PLANE)
-                        if dx < BLOCK_SIZE * 4 and dy < BLOCK_SIZE * 4 then
+                        -- Detect items within 4 block radius of target grid (XZ PLANE)
+                        if dx < BLOCK_SIZE * 4 and dz < BLOCK_SIZE * 4 then
                             table.insert(toCollect, {item = item, pos = pos})
                             break
                         end

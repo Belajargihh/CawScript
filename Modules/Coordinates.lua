@@ -25,10 +25,10 @@ Coordinates._lastGridY = 0
 -- FUNGSI UTAMA
 -- ═══════════════════════════════════════
 
---- Konversi posisi dunia ke grid (X=horizontal, Y=vertikal untuk game 2D)
-function Coordinates.worldToGrid(worldX, worldY)
+--- Konversi posisi dunia ke grid (X=horizontal, Z=depth untuk top-down)
+function Coordinates.worldToGrid(worldX, worldZ)
     local gridX = math.floor(worldX / Coordinates.BLOCK_SIZE + 0.5)
-    local gridY = math.floor(worldY / Coordinates.BLOCK_SIZE + 0.5)
+    local gridY = math.floor(worldZ / Coordinates.BLOCK_SIZE + 0.5)
     
     Coordinates._lastGridX = gridX
     Coordinates._lastGridY = gridY
@@ -47,7 +47,8 @@ function Coordinates.getGridPosition()
     end
     
     local pos = hrp.Position
-    return Coordinates.worldToGrid(pos.X, pos.Y)  -- X/Y = Standar game 2D di Roblox
+    -- Gunakan Z (depth) sebagai Y-axis untuk grid/UI
+    return Coordinates.worldToGrid(pos.X, pos.Z)
 end
 
 --- Ambil posisi grid terakhir dari cache
